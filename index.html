@@ -1,0 +1,1660 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tática Pixel — Fichas e Tabuleiro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0e22; --win1:#27336f; --win2:#111840; --line:#e9e1c6; --line2:#56669f;
+  --ink:#f4ecd8; --dim:#aeb2d4; --gold:#f2c14e; --ally:#5ab4ff; --foe:#ff6868; --ok:#7be07b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;color:var(--ink);font-family:'Pixelify Sans',system-ui,sans-serif;font-size:17px;line-height:1.35}
+body{min-height:100vh;background:
+  radial-gradient(1100px 520px at 50% -180px,#1f2c6e 0%,transparent 70%),
+  repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 2px,transparent 2px 4px),var(--bg)}
+h1,h2,h3,.pix{font-family:'Press Start 2P',monospace;font-weight:400}
+h2{font-size:12px;margin:0 0 12px;color:var(--gold);letter-spacing:.5px}
+h3{font-size:10px;margin:16px 0 8px;color:var(--dim);letter-spacing:.5px}
+.win{background:linear-gradient(180deg,var(--win1),var(--win2));border:3px solid var(--line);border-radius:6px;
+  box-shadow:inset 0 0 0 2px var(--line2),0 4px 0 #04061a;padding:14px}
+header{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:16px 20px;max-width:1440px;margin:0 auto}
+header h1{font-size:15px;margin:0;color:var(--gold);text-shadow:3px 3px 0 #3a1d00;line-height:1.5}
+header h1 small{display:block;font-family:'Pixelify Sans';font-size:15px;color:var(--dim);text-shadow:none;letter-spacing:0}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+button{font-family:inherit;font-size:16px;color:var(--ink);background:linear-gradient(180deg,#3b4994,#222b63);border:2px solid var(--line);
+  border-radius:4px;padding:5px 11px;cursor:pointer;box-shadow:0 2px 0 #04061a;line-height:1.2}
+button:hover{filter:brightness(1.18)}
+button:active{transform:translateY(1px);box-shadow:none}
+button:disabled{opacity:.38;cursor:not-allowed;filter:none;transform:none}
+button.on{background:linear-gradient(180deg,#f6cb5c,#c98d1c);color:#2a1600;border-color:#fff3c8}
+button.danger{background:linear-gradient(180deg,#a23636,#5e1a1a)}
+button.tab{font-family:'Press Start 2P';font-size:10px;padding:10px 13px}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink);background:#0b1032;border:2px solid var(--line2);border-radius:4px;padding:5px 8px;width:100%}
+input[type=color]{padding:2px;height:34px;cursor:pointer}
+textarea{resize:vertical;min-height:90px}
+input:disabled,select:disabled{opacity:.55;cursor:not-allowed}
+label{display:block;font-size:14px;color:var(--dim);margin-bottom:3px}
+main{max-width:1440px;margin:0 auto;padding:0 20px 40px}
+.view{display:none}.view.active{display:block}
+.muted{color:var(--dim);font-size:14px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.between{justify-content:space-between}
+.seg{display:inline-flex}
+.seg button{border-radius:0}
+.seg button:first-child{border-radius:4px 0 0 4px}
+.seg button:last-child{border-radius:0 4px 4px 0}
+.seg button+button{border-left-width:0}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges}
+
+/* fichas */
+.sheets-grid{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start}
+.group-title{font-family:'Press Start 2P';font-size:9px;margin:14px 0 6px;letter-spacing:.5px}
+.group-title.aliado{color:var(--ally)}.group-title.inimigo{color:var(--foe)}
+.card{display:flex;gap:10px;align-items:center;width:100%;text-align:left;padding:6px 8px;margin-bottom:6px;background:rgba(0,0,0,.22);border:2px solid transparent;box-shadow:none;border-radius:4px}
+.card:hover{border-color:var(--line2);filter:none;background:rgba(255,255,255,.05)}
+.card.sel{border-color:var(--gold);background:rgba(242,193,78,.1)}
+.card canvas{width:40px;height:40px;flex:none;background:rgba(0,0,0,.25);border-radius:3px}
+.card .nm{font-weight:600}
+.card .cl{font-size:14px;color:var(--dim)}
+.sheet-top{display:grid;grid-template-columns:200px 1fr;gap:18px}
+.portrait{width:200px;height:200px;background:#070a20;border:2px solid var(--line2);border-radius:4px}
+.fields{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 14px}
+.fields .full{grid-column:1/-1}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 22px}
+.stat{display:grid;grid-template-columns:74px 66px 1fr;gap:8px;align-items:center}
+.stat .k{font-family:'Press Start 2P';font-size:9px;color:var(--gold)}
+.stat input{padding:3px 6px;text-align:center}
+.bar{height:8px;background:#060920;border:1px solid #34407a;border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,#f2c14e,#ffe9a8)}
+.colors{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.classdesc{font-size:14px;color:var(--dim);background:rgba(0,0,0,.2);border-left:3px solid var(--gold);padding:6px 10px;margin-top:4px}
+.sheet-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;padding-top:14px;border-top:2px dashed var(--line2)}
+.chip{display:inline-block;font-size:12px;padding:1px 7px;border-radius:10px;border:1px solid currentColor}
+.chip.aliado{color:var(--ally)}.chip.inimigo{color:var(--foe)}
+
+/* tabuleiro */
+.board-grid{display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.toolbar .sp{flex:1}
+.stage{position:relative;overflow:auto;background:#05081a;border:2px solid var(--line2);border-radius:4px;min-height:300px;display:flex;justify-content:center;align-items:flex-start}
+.stage canvas{display:block;touch-action:none;cursor:pointer}
+.status{margin-top:8px;font-size:15px;color:var(--dim);min-height:22px}
+.banner{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);pointer-events:none;font-family:'Press Start 2P';font-size:16px;
+  color:var(--gold);text-shadow:3px 3px 0 #000;background:rgba(10,14,40,.85);border:3px solid var(--line);padding:14px 22px;border-radius:6px;opacity:0;transition:opacity .25s;white-space:nowrap}
+.banner.show{opacity:1}
+.side .seg{width:100%}.side .seg button{flex:1;font-family:'Press Start 2P';font-size:9px;padding:9px 6px}
+.palette{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.palette button{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:14px;padding:6px 4px}
+.palette canvas{width:32px;height:16px}
+.ulist{max-height:250px;overflow:auto;padding-right:4px}
+.ulist .card canvas{width:32px;height:32px}
+.ulist .card .cl{font-size:13px}
+.active-card{background:rgba(0,0,0,.25);border-radius:4px;padding:10px;display:grid;grid-template-columns:56px 1fr;gap:10px;align-items:center}
+.active-card canvas{width:56px;height:56px}
+.hpbar,.mpbar{height:8px;border:1px solid #34407a;background:#060920;border-radius:2px;overflow:hidden;margin:3px 0}
+.hpbar i{display:block;height:100%;background:linear-gradient(90deg,#4bd16b,#a6f0a0)}
+.mpbar i{display:block;height:100%;background:linear-gradient(90deg,#4b8ad1,#a0c8f0)}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.preview{margin-top:8px;font-size:15px;min-height:22px;color:var(--gold)}
+.order{display:flex;gap:4px;flex-wrap:wrap}
+.order canvas{width:32px;height:32px;background:rgba(0,0,0,.3);border-radius:3px;border-bottom:3px solid var(--ally)}
+.order canvas.inimigo{border-bottom-color:var(--foe)}
+.order canvas.cur{outline:2px solid var(--gold)}
+.order canvas.ko{opacity:.3}
+.log{max-height:190px;overflow:auto;font-size:14px;background:rgba(0,0,0,.25);border-radius:4px;padding:6px 8px}
+.log div{padding:2px 0;border-bottom:1px dotted #2b3672}
+.log .a{color:var(--ally)}.log .i{color:var(--foe)}
+.check{display:flex;gap:8px;align-items:center;font-size:15px;color:var(--ink);margin:10px 0}
+.check input{width:auto}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(3,5,18,.75);display:none;align-items:center;justify-content:center;z-index:10;padding:20px}
+.modal.show{display:flex}
+.modal .win{width:min(720px,100%)}
+.modal textarea{min-height:260px;font-family:monospace;font-size:13px}
+
+/* dados */
+.die{position:relative;width:46px;height:46px;display:inline-grid;place-items:center;margin:3px;font-family:'Press Start 2P',monospace;font-size:12px;color:#1a1226;background:#f4ecd8;vertical-align:middle}
+.die small{position:absolute;bottom:-1px;font-size:6px;opacity:.6;font-family:'Press Start 2P'}
+.die.d4{clip-path:polygon(50% 0,100% 100%,0 100%);padding-top:16px}
+.die.d6{border-radius:6px}
+.die.d8{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+.die.d10,.die.d100{clip-path:polygon(50% 0,100% 42%,50% 100%,0 42%)}
+.die.d12{clip-path:polygon(50% 0,100% 38%,82% 100%,18% 100%,0 38%)}
+.die.d20{clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)}
+.die.dmg{background:#ff9a7a}.die.heal{background:#9af0a0}.die.hit{background:#f2c14e}
+.die.crit{background:#fff27a;box-shadow:0 0 0 3px #fff}.die.fumble{background:#8a8aa0}
+.die.rolling{animation:shake .12s infinite}
+@keyframes shake{0%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}100%{transform:rotate(-8deg)}}
+.tray{min-height:60px;background:rgba(0,0,0,.28);border:2px dashed var(--line2);border-radius:6px;padding:8px;display:flex;flex-wrap:wrap;align-items:center;gap:2px}
+.bigtotal{font-family:'Press Start 2P';font-size:22px;color:var(--gold);text-shadow:3px 3px 0 #000;margin:10px 0}
+.dicepick{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.dicepick button{font-family:'Press Start 2P';font-size:10px;padding:10px 2px}
+.dice-grid{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start}
+.hist{max-height:520px;overflow:auto;font-size:15px}
+.hist div{padding:6px 4px;border-bottom:1px dotted #2b3672}
+.hist .t{color:var(--dim);font-size:13px}
+.num{width:70px;text-align:center}
+.inline{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap}
+.inline input,.inline select{width:auto}
+/* ataques na ficha */
+.atk-head,.atk-row{display:grid;grid-template-columns:minmax(120px,1.3fr) 190px 70px 120px 92px 60px 34px;gap:6px;align-items:center}
+.atk-head{font-size:12px;color:var(--dim);margin-bottom:4px}
+.atk-row{margin-bottom:6px;background:rgba(0,0,0,.2);padding:6px;border-radius:4px}
+.atk-row input,.atk-row select{padding:3px 5px;font-size:15px}
+.atk-row .dice{display:flex;gap:3px;align-items:center}
+.atk-row .dice input{width:46px;text-align:center}.atk-row .dice select{width:66px}
+.atk-row .rng{display:flex;gap:3px;align-items:center}.atk-row .rng input{width:46px;text-align:center}
+.atk-row .avg{grid-column:1/-1;font-size:13px;color:var(--dim);margin-top:-2px}
+.lockmsg{font-size:14px;color:var(--gold);margin:6px 0}
+.rolewrap{display:flex;gap:8px;align-items:center}
+.role{font-family:'Press Start 2P';font-size:9px;padding:10px 12px}
+.role.gm{background:linear-gradient(180deg,#7a3ab0,#3e1a6a)}
+.roll .vs{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;text-align:center;margin-bottom:12px}
+.roll .vs canvas{width:64px;height:64px}
+.roll .sec{background:rgba(0,0,0,.22);border-radius:6px;padding:10px;margin-bottom:10px}
+.roll .verdict{font-family:'Press Start 2P';font-size:12px;margin-top:8px}
+.verdict.ok{color:var(--ok)}.verdict.no{color:var(--foe)}.verdict.cr{color:#fff27a}
+.atklist{display:grid;gap:6px;margin-top:8px}
+.atklist button{text-align:left;font-size:15px}
+.atklist button small{color:var(--dim)}
+.atklist button.on small{color:#4a3000}
+.gmbox{margin-top:10px;background:rgba(122,58,176,.25);border:1px solid #7a3ab0;border-radius:4px;padding:8px}
+@media (max-width:1000px){
+  .sheets-grid,.board-grid,.dice-grid{grid-template-columns:1fr}
+  .atk-head{display:none}
+  .atk-row{grid-template-columns:1fr 1fr}
+  .atk-row>*:first-child{grid-column:1/-1}
+}
+@media (max-width:640px){
+  .sheet-top{grid-template-columns:1fr}
+  .portrait{margin:0 auto}
+  .fields,.stats{grid-template-columns:1fr}
+  .colors{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>TÁTICA PIXEL<small>Fichas de personagem e tabuleiro tático</small></h1>
+  <nav class="tabs">
+    <button class="tab on" data-tab="sheets">Fichas</button>
+    <button class="tab" data-tab="board">Tabuleiro</button>
+    <button class="tab" data-tab="dice">Dados</button>
+    <button class="tab" id="dataBtn">Backup</button>
+    <button class="role" id="roleBtn"></button>
+  </nav>
+</header>
+
+<main>
+  <!-- FICHAS -->
+  <section id="v-sheets" class="view active">
+    <div class="sheets-grid">
+      <aside class="win">
+        <div class="row between"><h2 style="margin:0">Personagens</h2><button id="newChar">+ Novo</button></div>
+        <div id="charList"></div>
+      </aside>
+      <div class="win" id="sheet"></div>
+    </div>
+  </section>
+
+  <!-- TABULEIRO -->
+  <section id="v-board" class="view">
+    <div class="board-grid">
+      <div class="win">
+        <div class="toolbar">
+          <div class="seg" id="viewSeg">
+            <button data-view="iso" class="on">Isométrico</button>
+            <button data-view="top">Visão de cima</button>
+          </div>
+          <button id="rotL" title="Girar para a esquerda" aria-label="Girar para a esquerda">⟲</button>
+          <button id="rotR" title="Girar para a direita" aria-label="Girar para a direita">⟳</button>
+          <span class="sp"></span>
+          <button id="zoomOut" title="Diminuir zoom" aria-label="Diminuir zoom">−</button>
+          <button id="zoomIn" title="Aumentar zoom" aria-label="Aumentar zoom">+</button>
+        </div>
+        <div class="stage" id="stage">
+          <canvas id="cv"></canvas>
+          <div class="banner" id="banner"></div>
+        </div>
+        <div class="status" id="status">Passe o mouse sobre o mapa.</div>
+      </div>
+
+      <aside class="win side">
+        <div class="seg" id="modeSeg">
+          <button data-mode="edit" class="on">Editar mapa</button>
+          <button data-mode="battle">Batalha</button>
+        </div>
+
+        <div id="p-edit">
+          <h3>TERRENO</h3>
+          <div class="palette" id="terrPal"></div>
+          <h3>ALTURA</h3>
+          <div class="row">
+            <button data-tool="up">▲ Elevar</button>
+            <button data-tool="down">▼ Rebaixar</button>
+          </div>
+          <h3>UNIDADES</h3>
+          <p class="muted" style="margin:0 0 8px">Escolha um personagem e clique numa casa para posicioná-lo.</p>
+          <div class="ulist" id="placeList"></div>
+          <div class="row" style="margin-top:8px">
+            <button data-tool="erase">Remover unidade</button>
+            <button id="clearUnits">Tirar todas</button>
+          </div>
+          <h3>MAPA</h3>
+          <div class="row">
+            <select id="mapSize" style="width:auto" aria-label="Tamanho do mapa">
+              <option value="10">10×10</option><option value="12">12×12</option><option value="14">14×14</option><option value="16">16×16</option>
+            </select>
+            <button id="genMap">Gerar mapa</button>
+            <button id="flatMap">Plano</button>
+          </div>
+        </div>
+
+        <div id="p-battle" hidden>
+          <div id="rulesBox" style="margin-top:12px"></div>
+          <div class="row" style="margin-top:12px">
+            <button id="startBattle" class="on">Iniciar batalha</button>
+            <button id="stopBattle" class="danger" hidden>Encerrar</button>
+          </div>
+          <label class="check"><input type="checkbox" id="aiToggle" checked> Inimigos controlados pelo computador</label>
+          <div id="activeBox"></div>
+          <h3>ORDEM DOS TURNOS</h3>
+          <div class="order" id="orderBox"><span class="muted">Inicie a batalha.</span></div>
+          <h3>REGISTRO</h3>
+          <div class="log" id="logBox"><div class="muted">Nada ainda.</div></div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- DADOS -->
+  <section id="v-dice" class="view">
+    <div class="dice-grid">
+      <div class="win">
+        <h2>Rolador de dados</h2>
+        <div class="dicepick" id="dicePick"></div>
+        <div class="row" style="margin-top:14px">
+          <label class="inline">Quantidade <input type="number" id="rQty" class="num" min="1" max="50" value="1"></label>
+          <label class="inline">Modificador <input type="number" id="rMod" class="num" min="-99" max="99" value="0"></label>
+          <label class="inline" style="flex:1;min-width:200px">Motivo <input id="rWhy" placeholder="ex.: teste de furtividade da Lira"></label>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button class="on" id="rollFree" style="font-family:'Press Start 2P';font-size:11px;padding:12px 18px">ROLAR</button>
+          <span class="muted" id="rFormula"></span>
+        </div>
+        <h3>RESULTADO</h3>
+        <div class="tray" id="freeTray"><span class="muted">Escolha um dado e role.</span></div>
+        <div class="bigtotal" id="freeTotal"></div>
+      </div>
+      <aside class="win">
+        <div class="row between"><h2 style="margin:0">Histórico</h2><button id="clearHist">Limpar</button></div>
+        <div class="hist" id="histBox" style="margin-top:10px"></div>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="rollModal" role="dialog" aria-modal="true" aria-labelledby="rollTitle">
+  <div class="win roll"><h2 id="rollTitle">Rolagem</h2><div id="rollBody"></div></div>
+</div>
+
+<div class="modal" id="roleModal" role="dialog" aria-modal="true" aria-labelledby="roleTitle">
+  <div class="win" style="width:min(460px,100%)">
+    <h2 id="roleTitle">Perfil</h2>
+    <div id="roleBody"></div>
+  </div>
+</div>
+
+<div class="modal" id="dataModal" role="dialog" aria-modal="true" aria-labelledby="dataTitle">
+  <div class="win">
+    <h2 id="dataTitle">Exportar / importar</h2>
+    <p class="muted" style="margin-top:0">Tudo (fichas, mapa e posições) em JSON. Copie para guardar um backup, ou cole aqui e clique em Importar.</p>
+    <textarea id="dataText" spellcheck="false"></textarea>
+    <div class="row" style="margin-top:10px">
+      <button id="copyData">Copiar</button>
+      <button id="importData">Importar</button>
+      <span class="sp" style="flex:1"></span>
+      <span class="muted" id="dataMsg"></span>
+      <button id="closeData">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ================= utilidades =================
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const uid = () => Math.random().toString(36).slice(2, 10);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function hash3(a,b,c){ let h=Math.imul(a+11,374761393)^Math.imul(b+7,668265263)^Math.imul(c+13,1274126177); h=Math.imul(h^(h>>>13),1274126177); return (h^(h>>>16))>>>0; }
+function shade(hex, f){
+  const n = parseInt(hex.slice(1), 16); let r=n>>16, g=n>>8&255, b=n&255;
+  if (f < 0){ r*=1+f; g*=1+f; b*=1+f; } else { r+=(255-r)*f; g+=(255-g)*f; b+=(255-b)*f; }
+  return '#' + [r,g,b].map(v => Math.round(clamp(v,0,255)).toString(16).padStart(2,'0')).join('');
+}
+const now = () => performance.now();
+
+// ================= regras =================
+const CLASSES = {
+  guerreiro:{nome:'Guerreiro', desc:'Linha de frente. Ataque alto e boa resistência.', hp:44, mp:6, atk:13, def:8, mag:3, agi:7, mov:4, jump:2, rmin:1, rmax:1, cloth:'#b8402f', hair:'#6b3a1f', accent:'#c9ccd6', magia:null},
+  cavaleiro:{nome:'Cavaleiro', desc:'Armadura pesada e escudo. Lento, mas difícil de derrubar.', hp:50, mp:4, atk:11, def:12, mag:2, agi:5, mov:3, jump:1, rmin:1, rmax:1, cloth:'#3c5fb0', hair:'#3a2a1a', accent:'#d9dce6', magia:null},
+  arqueiro:{nome:'Arqueiro', desc:'Ataca de 2 a 4 casas de distância. Atirar do alto causa mais dano.', hp:32, mp:6, atk:11, def:5, mag:4, agi:9, mov:4, jump:2, rmin:2, rmax:4, cloth:'#3f8a3a', hair:'#c9a040', accent:'#8a5a2a', magia:null},
+  mago:{nome:'Mago', desc:'Frágil, mas lança Chama a até 4 casas (6 PM).', hp:26, mp:30, atk:4, def:4, mag:15, agi:6, mov:3, jump:1, rmin:1, rmax:1, cloth:'#6a3ab0', hair:'#d8d8e8', accent:'#f2c14e', magia:{nome:'Chama', tipo:'dano', custo:6, alc:4}},
+  clerigo:{nome:'Clérigo', desc:'Usa Cura em aliados a até 3 casas (5 PM).', hp:30, mp:26, atk:5, def:6, mag:11, agi:6, mov:3, jump:1, rmin:1, rmax:1, cloth:'#e8e4d4', hair:'#a0602a', accent:'#f2c14e', magia:{nome:'Cura', tipo:'cura', custo:5, alc:3}},
+  ladino:{nome:'Ladino', desc:'Rápido e ágil. Move longe e salta alturas maiores.', hp:30, mp:8, atk:10, def:5, mag:4, agi:12, mov:5, jump:3, rmin:1, rmax:1, cloth:'#4a4a5e', hair:'#222230', accent:'#d0d4de', magia:null},
+};
+const STATS = [
+  ['hp','PV','Pontos de vida',80],['mp','PM','Pontos de magia',40],
+  ['atk','ATQ','Ataque físico',20],['def','DEF','Defesa',20],
+  ['mag','MAG','Poder mágico',20],['agi','AGI','Agilidade: ordem dos turnos e esquiva',20],
+  ['mov','MOV','Casas que anda por turno',8],['jump','SALTO','Altura máxima que sobe ou desce',5],
+  ['rmin','ALC mín','Distância mínima do ataque',6],['rmax','ALC máx','Distância máxima do ataque',6],
+];
+const STAT_KEYS = ['hp','mp','atk','def','mag','agi','mov','jump','rmin','rmax'];
+const DIE_TYPES = [4,6,8,10,12,20,100];
+// ataques com dados: n dados de d lados + bônus; "hit" = bônus de acerto no d20
+const A = (nome,n,d,bonus,hit,amin,amax,tipo='dano',custo=0) => ({nome,n,d,bonus,hit,amin,amax,tipo,custo});
+const CLASS_ATTACKS = {
+  guerreiro:[A('Espadada',2,6,2,5,1,1), A('Golpe pesado',1,12,4,3,1,1,'dano',3)],
+  cavaleiro:[A('Lança',1,10,2,4,1,1), A('Investida com escudo',2,4,2,5,1,1,'dano',2)],
+  arqueiro:[A('Flecha',1,8,2,5,2,4), A('Chuva de flechas',3,10,0,3,2,5,'dano',4)],
+  mago:[A('Cajado',1,4,0,2,1,1), A('Chama',3,6,2,4,1,4,'dano',6), A('Raio',2,10,0,3,2,5,'dano',8)],
+  clerigo:[A('Maça',1,6,1,3,1,1), A('Cura',2,8,3,0,0,3,'cura',5)],
+  ladino:[A('Adaga',2,4,3,6,1,1), A('Golpe furtivo',1,20,0,4,1,1,'dano',3)],
+};
+const defaultAttacks = cls => (CLASS_ATTACKS[cls]||CLASS_ATTACKS.guerreiro).map(a => ({id:uid(), ...a}));
+const fmtDice = a => `${a.n}d${a.d}${a.bonus ? (a.bonus>0?'+':'')+a.bonus : ''}`;
+const avgDice = a => a.n*(a.d+1)/2 + (a.bonus||0);
+const rollDie = d => 1 + Math.floor(Math.random()*d);
+const caOf = ch => 10 + Math.floor(ch.def/2);
+let settings = Object.assign({role:'mestre', pin:'', combat:'dados', hitRoll:true}, store.get('tp_set', {}));
+const saveSet = () => store.set('tp_set', settings);
+const isGM = () => settings.role === 'mestre';
+let rollHist = store.get('tp_hist', []);
+function pushHist(html){ rollHist.unshift({html, t:Date.now()}); if (rollHist.length > 80) rollHist.length = 80; store.set('tp_hist', rollHist); renderHist(); }
+
+const TER = {
+  grama:{nome:'Grama', pal:['#4f9a3a','#5cad44','#468a34','#74c656'], side:['#7a5532','#5f4026'], lip:'#3d7a2c'},
+  terra:{nome:'Terra', pal:['#8f643b','#9c7045','#7f5733','#ae8152'], side:['#6f4b2c','#573a22']},
+  areia:{nome:'Areia', pal:['#d9c07c','#e3cb88','#c9ad68','#f0dc9c'], side:['#b2955a','#977c46']},
+  pedra:{nome:'Pedra', pal:['#80828e','#8e909c','#6c6e7a','#a6a8b4'], side:['#61636e','#4b4d58']},
+  neve:{nome:'Neve', pal:['#e6eef6','#f4f8fc','#cfdbe8','#ffffff'], side:['#8a95a8','#717c90'], lip:'#c2d0e0'},
+  agua:{nome:'Água', pal:['#2f70bb','#3a7fcb','#2862a6','#6fb2ee'], side:['#245796','#1b4479'], bloq:true},
+};
+const TT = Object.keys(TER);
+const HS = 8, MAXH = 6; // altura 0..5
+const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+
+// ================= sprites =================
+const BASE = [
+  "................",
+  ".....oooooo.....",
+  "....ohhhhhho....",
+  "...ohhhhhhhho...",
+  "...ohhsssshho...",
+  "...ohsessesho...",
+  "....osssssso....",
+  "...occcccccco...",
+  "..occcdccdccco..",
+  "..occcdccdccco..",
+  "..osdddaadddso..",
+  "...odccccccdo...",
+  "...occcooccco...",
+  "...oddo..oddo...",
+  "...oddo..oddo...",
+  "...ooo....ooo...",
+];
+// '.' mantém a base, '_' apaga
+const OVER = {
+  guerreiro:{1:"..............w.",2:"....oaaaaaao..w.",3:"...oaaaaaaaao.w.",4:"...oaassssaao.w.",5:"..............w.",6:"..............w.",7:"..............w.",8:".............aaa",9:"..............d."},
+  cavaleiro:{0:"......cc........",2:"....oaaaaaao....",3:"...oaaaaaaaao...",4:"...oaaooooaao...",5:"...oasessesao...",8:"oooo............",9:"oaao............",10:"oaco............",11:"oaao............",12:".oo............."},
+  mago:{0:".......oco......",1:"....._occco_.gg.",2:"....occcccccogg.",3:"..oooccccccoood.",4:"..............d.",5:"..............d.",6:"..............d.",7:"..............d.",8:"..............d.",9:"..............d.",10:"..............d.",11:"..............d.",12:"..............d.",13:"....dddddddd..d.",14:"....dddddddd..d."},
+  arqueiro:{2:"....occcccco....",3:"...occcccccco.d.",4:"...occsssscco..d",5:"...............d",6:"...............d",7:"...............d",8:"...............d",9:"...............d",10:"..............d."},
+  clerigo:{0:"..............a.",1:".............aaa",2:"....occaacco..a.",3:"...occcccccco.d.",4:"...occsssscco.d.",5:"..............d.",6:"..............d.",7:"..............d.",8:"..............d.",9:"..............d.",10:"..............d.",11:"..............d.",12:"..............d.",13:"..............d.",14:"..............d."},
+  ladino:{3:"...occcccccco...",6:"....oddddddo....",8:"..............w.",9:"..............w.",10:"..............a."},
+};
+const spriteCache = new Map();
+function makeSprite(ch){
+  const c = ch.colors;
+  const key = [ch.cls,c.skin,c.hair,c.cloth,c.accent].join('|');
+  if (spriteCache.has(key)) return spriteCache.get(key);
+  const grid = BASE.map(r => r.split(''));
+  const ov = OVER[ch.cls] || {};
+  for (const [ri,row] of Object.entries(ov)){
+    for (let x=0; x<16; x++){ const k=row[x]; if (k==='.'||k===undefined) continue; grid[ri][x] = k==='_' ? '.' : k; }
+  }
+  const pal = {o:'#1a1226', e:'#1a1226', s:c.skin, h:c.hair, c:c.cloth, d:shade(c.cloth,-.4), a:c.accent, w:'#f6f2e6', g:'#8ff3ff'};
+  const cv = document.createElement('canvas'); cv.width=16; cv.height=16;
+  const g = cv.getContext('2d');
+  for (let y=0;y<16;y++) for (let x=0;x<16;x++){
+    const k = grid[y][x]; if (k==='.') continue;
+    let col = pal[k];
+    // brilho de 1px no topo do cabelo e da roupa
+    if ((k==='h'||k==='c') && y>0 && grid[y-1][x]==='o') col = shade(col,.22);
+    g.fillStyle = col; g.fillRect(x,y,1,1);
+  }
+  spriteCache.set(key, cv);
+  return cv;
+}
+function drawThumb(cv, ch, scale){
+  const g = cv.getContext('2d'); cv.width = 16*scale; cv.height = 16*scale;
+  g.imageSmoothingEnabled = false; g.clearRect(0,0,cv.width,cv.height);
+  g.drawImage(makeSprite(ch), 0, 0, cv.width, cv.height);
+}
+
+// ================= texturas de terreno =================
+const texCache = new Map();
+function spanHW(r){ return r < 8 ? 2*(r+1) : 2*(16-r); }
+function pickColor(type, x, y, v){
+  const T = TER[type], p = T.pal, h = hash3(x, y, v*31 + TT.indexOf(type)*7) % 100;
+  let c = h < 58 ? p[0] : h < 80 ? p[1] : h < 95 ? p[2] : p[3];
+  if (type==='agua' && ((x + y*2 + v*5) % 13 === 0)) c = p[3];
+  if (type==='pedra' && (((x + 2*y) % 12 === 0) || ((x - 2*y + 96) % 12 === 0))) c = shade(p[2], -.12);
+  if (type==='terra' && h > 97) c = shade(p[2], -.2);
+  return c;
+}
+function topTex(type, v){
+  const key = 't'+type+v; if (texCache.has(key)) return texCache.get(key);
+  const cv = document.createElement('canvas'); cv.width=32; cv.height=16; const g = cv.getContext('2d');
+  for (let r=0;r<16;r++){
+    const hw = spanHW(r), x0 = 16-hw, x1 = 16+hw-1;
+    for (let x=x0;x<=x1;x++){
+      let c = pickColor(type, x, r, v);
+      if (x===x0 || x===x1 || (r===0) || (r===15)) c = r < 8 ? shade(c,.2) : shade(c,-.22);
+      g.fillStyle=c; g.fillRect(x,r,1,1);
+    }
+  }
+  texCache.set(key, cv); return cv;
+}
+function sqTex(type, v){
+  const key = 's'+type+v; if (texCache.has(key)) return texCache.get(key);
+  const cv = document.createElement('canvas'); cv.width=16; cv.height=16; const g = cv.getContext('2d');
+  for (let y=0;y<16;y++) for (let x=0;x<16;x++){
+    let c = pickColor(type, x*2, y, v);
+    if (type==='pedra') c = ((x%8===0)||((y+(x>>3)*4)%8===0)) ? shade(TER.pedra.pal[2],-.12) : c;
+    if (y===0||x===0) c = shade(c,.12);
+    g.fillStyle=c; g.fillRect(x,y,1,1);
+  }
+  texCache.set(key, cv); return cv;
+}
+function tileImg(type, v, h){
+  const key = 'i'+type+v+'_'+h; if (texCache.has(key)) return texCache.get(key);
+  const T = TER[type], side = h*HS + 4;
+  const cv = document.createElement('canvas'); cv.width=32; cv.height=16+side+1; const g = cv.getContext('2d');
+  for (let x=0;x<32;x++){
+    const left = x < 16, by = 8 + ((left ? x : 31-x) >> 1);
+    const base = left ? T.side[0] : T.side[1];
+    g.fillStyle = base; g.fillRect(x, by+1, 1, side);
+    // camadas de bloco, como no FFT
+    g.fillStyle = shade(base, -.25);
+    for (let k=HS; k<side; k+=HS) g.fillRect(x, by+k, 1, 1);
+    // textura
+    for (let k=1;k<=side;k++){ if (hash3(x,k,h+v*3)%9===0){ g.fillStyle = shade(base, hash3(k,x,7)%2 ? .1 : -.12); g.fillRect(x,by+k,1,1); } }
+    if (T.lip){ g.fillStyle = left ? T.lip : shade(T.lip,-.18); g.fillRect(x, by+1, 1, 2); if (hash3(x,h,v)%3===0) g.fillRect(x, by+3, 1, 1); }
+    g.fillStyle = shade(base, -.45); g.fillRect(x, by+side, 1, 1);
+    if (x===0 || x===31){ g.fillStyle = shade(base,-.35); g.fillRect(x, by+1, 1, side); }
+  }
+  g.fillStyle = shade(T.side[0], -.12); g.fillRect(15, 16, 1, side); // aresta frontal
+  g.drawImage(topTex(type, v), 0, 0);
+  texCache.set(key, cv); return cv;
+}
+const ovCache = new Map();
+function diamondOverlay(color){
+  if (ovCache.has(color)) return ovCache.get(color);
+  const cv = document.createElement('canvas'); cv.width=32; cv.height=16; const g = cv.getContext('2d');
+  for (let r=0;r<16;r++){ const hw=spanHW(r); g.fillStyle=color; g.fillRect(16-hw, r, hw*2, 1);
+    g.fillStyle=shade(color,.5); g.fillRect(16-hw, r, 2, 1); g.fillRect(16+hw-2, r, 2, 1); }
+  ovCache.set(color, cv); return cv;
+}
+
+// ================= estado =================
+function mkChar(name, cls, team, o={}){
+  const C = CLASSES[cls];
+  const ch = {id:uid(), name, cls, team, level:o.level||1, notes:o.notes||'',
+    colors:{skin:o.skin||'#f0c39a', hair:o.hair||C.hair, cloth:o.cloth||C.cloth, accent:o.accent||C.accent}};
+  for (const k of STAT_KEYS) ch[k] = C[k];
+  ch.attacks = defaultAttacks(cls);
+  return ch;
+}
+function genMap(n, seed){
+  const rnd = mulberry32(seed);
+  let H = Array.from({length:n*n}, () => rnd());
+  for (let pass=0; pass<3; pass++){
+    const N = H.slice();
+    for (let y=0;y<n;y++) for (let x=0;x<n;x++){
+      let s=0,c=0; for (let dy=-1;dy<=1;dy++) for (let dx=-1;dx<=1;dx++){ const X=x+dx,Y=y+dy; if(X<0||Y<0||X>=n||Y>=n) continue; s+=H[Y*n+X]; c++; }
+      N[y*n+x] = s/c;
+    }
+    H = N;
+  }
+  const mn = Math.min(...H), mx = Math.max(...H);
+  const W = Array.from({length:n*n}, () => rnd());
+  const tiles = H.map((v,i) => {
+    const h = Math.round((v-mn)/(mx-mn||1) * 4.4);
+    let t = 'grama';
+    if (h >= 4) t = rnd() < .55 ? 'pedra' : 'grama';
+    if (h >= 4 && rnd() < .25) t = 'neve';
+    if (h === 3 && rnd() < .3) t = 'pedra';
+    if (h <= 1 && rnd() < .1) t = 'terra';
+    if (h === 0) t = W[i] < .75 ? 'agua' : 'areia';
+    return {t, h, v: Math.floor(rnd()*4)};
+  });
+  for (let y=0;y<n;y++) for (let x=0;x<n;x++){
+    const T = tiles[y*n+x]; if (T.t==='agua' || T.h>1) continue;
+    for (const [dx,dy] of DIRS){ const X=x+dx,Y=y+dy; if(X<0||Y<0||X>=n||Y>=n) continue; if (tiles[Y*n+X].t==='agua'){ T.t='areia'; break; } }
+  }
+  // cantos livres para posicionar exércitos
+  for (let y=0;y<n;y++) for (let x=0;x<n;x++){
+    if ((x<4 && y>n-5) || (x>n-5 && y<4)){ const T=tiles[y*n+x]; if (T.t==='agua'){ T.t='grama'; T.h=1; } }
+  }
+  return {n, tiles};
+}
+function seedAll(){
+  chars = [
+    mkChar('Aldo','guerreiro','aliado',{notes:'Ex-soldado da guarda real. Jurou proteger Lira.'}),
+    mkChar('Lira','arqueiro','aliado',{hair:'#e0b050',skin:'#f6d2b0'}),
+    mkChar('Mirel','mago','aliado',{cloth:'#5038b0'}),
+    mkChar('Tomas','clerigo','aliado',{skin:'#c48a5e'}),
+    mkChar('Grak','cavaleiro','inimigo',{cloth:'#5a1e2e',accent:'#7a7e8a',hair:'#111'}),
+    mkChar('Vex','ladino','inimigo',{cloth:'#2e1e3e',skin:'#d8b090'}),
+    mkChar('Sombra','mago','inimigo',{cloth:'#2a2a3a',hair:'#5a2020',accent:'#ff5050'}),
+    mkChar('Bruta','guerreiro','inimigo',{cloth:'#6a2a1a',hair:'#b03020',skin:'#a87050'}),
+  ];
+  map = genMap(12, 7);
+  const n = map.n;
+  const spots = {aliado:[[1,n-3],[2,n-2],[1,n-1],[3,n-1]], inimigo:[[n-2,2],[n-3,1],[n-2,0],[n-4,0]]};
+  placements = [];
+  const used = {aliado:0, inimigo:0};
+  for (const c of chars){ const s = spots[c.team][used[c.team]++]; if (s) placements.push({id:uid(), charId:c.id, x:s[0], y:s[1]}); }
+}
+let chars = store.get('tp_chars', null), map = store.get('tp_map', null), placements = store.get('tp_place', null);
+if (!Array.isArray(chars) || !map || !Array.isArray(placements)) seedAll();
+for (const c of chars) if (!Array.isArray(c.attacks)) c.attacks = defaultAttacks(c.cls);
+let selId = chars[0] ? chars[0].id : null;
+function save(){ store.set('tp_chars', chars); store.set('tp_map', map); store.set('tp_place', placements); }
+const charById = id => chars.find(c => c.id === id);
+
+// ================= abas =================
+let tab = 'sheets';
+$$('.tab[data-tab]').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+function showTab(t){
+  tab = t;
+  $$('.tab[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab===t));
+  $('#v-sheets').classList.toggle('active', t==='sheets');
+  $('#v-board').classList.toggle('active', t==='board');
+  $('#v-dice').classList.toggle('active', t==='dice');
+  if (t==='board'){ renderEditPanel(); fitCanvas(); }
+  else if (t==='sheets') renderList();
+  else renderHist();
+}
+
+// ================= fichas =================
+function renderList(){
+  const box = $('#charList'); box.innerHTML = '';
+  for (const team of ['aliado','inimigo']){
+    const list = chars.filter(c => c.team===team);
+    const h = document.createElement('div'); h.className='group-title '+team; h.textContent = team==='aliado' ? 'ALIADOS' : 'INIMIGOS';
+    box.appendChild(h);
+    if (!list.length){ const m=document.createElement('div'); m.className='muted'; m.textContent='Nenhum.'; box.appendChild(m); }
+    for (const c of list){
+      const b = document.createElement('button'); b.className = 'card' + (c.id===selId ? ' sel' : '');
+      const cv = document.createElement('canvas'); drawThumb(cv, c, 3);
+      const t = document.createElement('div');
+      t.innerHTML = `<div class="nm">${esc(c.name||'Sem nome')}</div><div class="cl">${CLASSES[c.cls].nome} · Nv ${c.level}</div>`;
+      b.append(cv, t); b.onclick = () => { selId = c.id; renderList(); renderSheet(); };
+      box.appendChild(b);
+    }
+  }
+}
+function statBar(k, v){ const m = STATS.find(s=>s[0]===k)[3]; return `<div class="bar"><i style="width:${clamp(v/m*100,0,100)}%"></i></div>`; }
+function renderSheet(){
+  const el = $('#sheet'); const c = charById(selId);
+  if (!c){ el.innerHTML = '<h2>Nenhum personagem</h2><p class="muted">Clique em “+ Novo” para criar uma ficha.</p>'; return; }
+  const C = CLASSES[c.cls], lk = isGM() ? '' : 'disabled';
+  el.innerHTML = `
+    <div class="sheet-top">
+      <div><canvas class="portrait" id="portrait" width="200" height="200" aria-label="Retrato em pixel art"></canvas></div>
+      <div>
+        <h2>Ficha de personagem</h2>
+        <div class="fields">
+          <div class="full"><label for="f-name">Nome</label><input id="f-name" data-f="name" value="${esc(c.name)}" maxlength="24"></div>
+          <div><label for="f-cls">Classe</label><select id="f-cls" data-f="cls" ${lk}>${Object.entries(CLASSES).map(([k,v])=>`<option value="${k}" ${k===c.cls?'selected':''}>${v.nome}</option>`).join('')}</select></div>
+          <div><label for="f-team">Lado</label><select id="f-team" data-f="team" ${lk}><option value="aliado" ${c.team==='aliado'?'selected':''}>Aliado</option><option value="inimigo" ${c.team==='inimigo'?'selected':''}>Inimigo</option></select></div>
+          <div><label for="f-level">Nível</label><input id="f-level" type="number" min="1" max="99" data-f="level" data-num value="${c.level}" ${lk}></div>
+          <div><label>Defesa nos dados</label><div style="padding:6px 0">CA <b>${caOf(c)}</b> <span class="muted">(10 + DEF÷2)</span></div></div>
+          <div class="full classdesc">${C.desc}</div>
+        </div>
+      </div>
+    </div>
+    <h3>ATRIBUTOS</h3>
+    <div class="stats">${STATS.map(([k,lab,tip])=>`
+      <div class="stat" title="${tip}"><span class="k">${lab}</span><input type="number" min="0" max="999" data-f="${k}" data-num value="${c[k]}" aria-label="${tip}" ${lk}><span id="bar-${k}">${statBar(k,c[k])}</span></div>`).join('')}
+    </div>
+    <h3>ATAQUES E HABILIDADES (DADOS)</h3>
+    ${isGM() ? '' : '<div class="lockmsg">🔒 Só o mestre edita atributos e ataques. Troque o perfil no topo da página.</div>'}
+    <div class="atk-head"><span>Nome</span><span>Dados</span><span>Acerto</span><span>Alcance</span><span>Tipo</span><span>PM</span><span></span></div>
+    <div id="atkRows">${c.attacks.map((a,i) => `
+      <div class="atk-row" data-i="${i}">
+        <input data-a="nome" value="${esc(a.nome)}" maxlength="28" aria-label="Nome do ataque" ${lk}>
+        <div class="dice"><input type="number" data-a="n" data-num min="1" max="50" value="${a.n}" aria-label="Quantidade de dados" ${lk}>
+          <select data-a="d" aria-label="Tipo de dado" ${lk}>${DIE_TYPES.map(d=>`<option value="${d}" ${d===a.d?'selected':''}>d${d}</option>`).join('')}</select>
+          <span>+</span><input type="number" data-a="bonus" data-num value="${a.bonus}" aria-label="Bônus de dano" ${lk}></div>
+        <input type="number" data-a="hit" data-num value="${a.hit}" aria-label="Bônus de acerto" title="Bônus somado ao d20" ${lk}>
+        <div class="rng"><input type="number" data-a="amin" data-num min="0" max="20" value="${a.amin}" aria-label="Alcance mínimo" ${lk}><span>a</span><input type="number" data-a="amax" data-num min="0" max="20" value="${a.amax}" aria-label="Alcance máximo" ${lk}></div>
+        <select data-a="tipo" aria-label="Tipo" ${lk}><option value="dano" ${a.tipo==='dano'?'selected':''}>Dano</option><option value="cura" ${a.tipo==='cura'?'selected':''}>Cura</option></select>
+        <input type="number" data-a="custo" data-num min="0" value="${a.custo}" aria-label="Custo em PM" ${lk}>
+        <button data-del="${i}" title="Remover ataque" aria-label="Remover ataque" ${lk}>✕</button>
+        <div class="avg">${fmtDice(a)} · média ${avgDice(a).toFixed(1)} · máximo ${a.n*a.d+(a.bonus||0)}</div>
+      </div>`).join('')}</div>
+    ${isGM() ? `<div class="row" style="margin-top:6px"><button id="addAtk">+ Adicionar ataque</button><button id="resetAtk">Restaurar ataques da classe</button></div>` : ''}
+    <h3>APARÊNCIA</h3>
+    <div class="colors">
+      <div><label for="c-skin">Pele</label><input type="color" id="c-skin" data-c="skin" value="${c.colors.skin}"></div>
+      <div><label for="c-hair">Cabelo</label><input type="color" id="c-hair" data-c="hair" value="${c.colors.hair}"></div>
+      <div><label for="c-cloth">Roupa</label><input type="color" id="c-cloth" data-c="cloth" value="${c.colors.cloth}"></div>
+      <div><label for="c-accent">Metal / detalhe</label><input type="color" id="c-accent" data-c="accent" value="${c.colors.accent}"></div>
+    </div>
+    <h3>HISTÓRIA E ANOTAÇÕES</h3>
+    <textarea data-f="notes" aria-label="História e anotações" placeholder="Origem, personalidade, equipamentos, objetivos...">${esc(c.notes)}</textarea>
+    <div class="sheet-actions">
+      ${isGM() ? '<button id="applyClass">Usar atributos da classe</button>' : ''}
+      <button id="dupChar">Duplicar</button>
+      <button id="toBoard">Posicionar no tabuleiro</button>
+      <span style="flex:1"></span>
+      <button class="danger" id="delChar">Excluir</button>
+    </div>`;
+  el.querySelectorAll('[data-f]').forEach(inp => {
+    inp.addEventListener(inp.tagName==='SELECT' ? 'change' : 'input', () => {
+      const f = inp.dataset.f; let v = inp.value;
+      if (inp.dataset.num !== undefined){ v = parseInt(v,10); if (isNaN(v)) return; v = clamp(v, f==='level'?1:0, 999); }
+      if (f==='cls' && v!==c.cls){
+        const old = CLASSES[c.cls], untouched = STAT_KEYS.every(k => c[k]===old[k]);
+        const clothDefault = c.colors.cloth === old.cloth, oldCls = c.cls;
+        const atkDefault = JSON.stringify(c.attacks.map(({id,...r}) => r)) === JSON.stringify(CLASS_ATTACKS[oldCls]);
+        c.cls = v;
+        if (untouched) for (const k of STAT_KEYS) c[k] = CLASSES[v][k];
+        if (clothDefault) c.colors.cloth = CLASSES[v].cloth;
+        if (c.colors.accent === old.accent) c.colors.accent = CLASSES[v].accent;
+        if (atkDefault) c.attacks = defaultAttacks(v);
+        save(); renderSheet(); renderList(); return;
+      }
+      c[f] = v; save();
+      if (STAT_KEYS.includes(f)) $('#bar-'+f).innerHTML = statBar(f, v);
+      if (f==='name'||f==='team'||f==='level') renderList();
+    });
+  });
+  el.querySelectorAll('[data-c]').forEach(inp => inp.addEventListener('input', () => { c.colors[inp.dataset.c] = inp.value; save(); renderList(); }));
+  el.querySelectorAll('.atk-row').forEach(row => {
+    const a = c.attacks[+row.dataset.i];
+    row.querySelectorAll('[data-a]').forEach(inp => inp.addEventListener(inp.tagName==='SELECT' ? 'change' : 'input', () => {
+      const f = inp.dataset.a; let v = inp.value;
+      if (inp.dataset.num !== undefined || f==='d'){ v = parseInt(v,10); if (isNaN(v)) return; }
+      if (f==='n') v = clamp(v,1,50); if (f==='amin'||f==='amax') v = clamp(v,0,20); if (f==='custo') v = Math.max(0,v);
+      a[f] = v; save();
+      row.querySelector('.avg').textContent = `${fmtDice(a)} · média ${avgDice(a).toFixed(1)} · máximo ${a.n*a.d+(a.bonus||0)}`;
+    }));
+  });
+  el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { c.attacks.splice(+b.dataset.del, 1); save(); renderSheet(); });
+  if ($('#addAtk')) $('#addAtk').onclick = () => { c.attacks.push({id:uid(), nome:'Novo ataque', n:1, d:6, bonus:0, hit:3, amin:1, amax:1, tipo:'dano', custo:0}); save(); renderSheet(); };
+  if ($('#resetAtk')) $('#resetAtk').onclick = () => { c.attacks = defaultAttacks(c.cls); save(); renderSheet(); };
+  if ($('#applyClass')) $('#applyClass').onclick = () => { for (const k of STAT_KEYS) c[k] = CLASSES[c.cls][k]; save(); renderSheet(); };
+  $('#dupChar').onclick = () => { const d = JSON.parse(JSON.stringify(c)); d.id = uid(); d.name = (c.name + ' II').slice(0,24); chars.push(d); selId = d.id; save(); renderList(); renderSheet(); };
+  $('#toBoard').onclick = () => { tool = {kind:'place', charId:c.id}; setMode('edit'); showTab('board'); flashStatus(`Clique numa casa para posicionar ${c.name}.`); };
+  const del = $('#delChar'); let armed = false;
+  del.onclick = () => {
+    if (!armed){ armed = true; del.textContent = 'Confirmar exclusão?'; setTimeout(()=>{ armed=false; if (del.isConnected) del.textContent='Excluir'; }, 3000); return; }
+    chars = chars.filter(x => x.id !== c.id); placements = placements.filter(p => p.charId !== c.id);
+    selId = chars[0] ? chars[0].id : null; save(); renderList(); renderSheet();
+  };
+}
+$('#newChar').onclick = () => {
+  const c = mkChar('Novo herói', 'guerreiro', 'aliado'); chars.push(c); selId = c.id; save(); renderList(); renderSheet();
+  setTimeout(()=>{ const i=$('#f-name'); if(i){ i.focus(); i.select(); } }, 0);
+};
+function drawPortrait(t){
+  const cv = $('#portrait'); if (!cv) return; const c = charById(selId); if (!c) return;
+  const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+  g.fillStyle = '#070a20'; g.fillRect(0,0,200,200);
+  // tile e personagem em escala 5
+  const S = 5, tl = topTex('grama', 1);
+  g.drawImage(tileImg('grama',1,1), 20, 200-S*(16+HS+5)-12, 32*S, (16+HS+5)*S);
+  const bob = Math.floor(t/420)%2;
+  g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(100-6*S/1.2, 200-S*(16+HS+5)-12+8*S-S, 10*S, 2*S);
+  g.drawImage(makeSprite(c), 100-8*S, 200-S*(16+HS+5)-12+8*S-15*S-bob*S+S, 16*S, 16*S);
+}
+
+// ================= tabuleiro: estado =================
+let viewMode = 'iso', rot = 0, zoomAdj = 0;
+let mode = 'edit';
+let tool = {kind:'terrain', t:'grama'};
+let hover = null, painting = false;
+const B = {on:false, units:[], order:[], ti:0, round:1, act:null, moved:false, acted:false, mode:null, reach:null, prev:null, tgt:null, busy:false, over:false, log:[], ai:true, token:0};
+const fx = [];
+const cv = $('#cv'), ctx = cv.getContext('2d');
+const buf = document.createElement('canvas'), bg = buf.getContext('2d');
+let bufW = 0, bufH = 0, scale = 2, ox = 0, oy = 0;
+
+const tileAt = (x,y) => map.tiles[y*map.n + x];
+const inb = (x,y) => x>=0 && y>=0 && x<map.n && y<map.n;
+function liveUnits(){
+  if (B.on) return B.units;
+  return placements.map(p => { const c = charById(p.charId); return c ? {uid:p.id, charId:p.charId, team:c.team, x:p.x, y:p.y, hp:c.hp, mp:c.mp, ko:false} : null; }).filter(Boolean);
+}
+function unitAt(x,y){ return liveUnits().find(u => u.x===x && u.y===y && !u.anim) || null; }
+function toView(x,y){ const n=map.n; switch(rot){ case 1: return [n-1-y, x]; case 2: return [n-1-x, n-1-y]; case 3: return [y, n-1-x]; default: return [x,y]; } }
+function fromView(vx,vy){ const n=map.n; switch(rot){ case 1: return [vy, n-1-vx]; case 2: return [n-1-vx, n-1-vy]; case 3: return [n-1-vy, vx]; default: return [vx,vy]; } }
+
+function computeBuffer(){
+  const n = map.n;
+  if (viewMode==='iso'){ oy = 34 + MAXH*HS; bufW = n*32 + 24; bufH = oy + n*16 + 10; ox = bufW/2; }
+  else { bufW = n*16 + 16; bufH = n*16 + 34; }
+  buf.width = bufW; buf.height = bufH;
+}
+function fitCanvas(){
+  computeBuffer();
+  const dpr = window.devicePixelRatio || 1;
+  const stage = $('#stage'); const avail = Math.max(200, stage.clientWidth - 8);
+  const availH = Math.max(260, window.innerHeight - 230);
+  const fit = Math.max(1, Math.min(Math.floor(avail*dpr / bufW), Math.floor(availH*dpr / bufH)));
+  zoomAdj = Math.max(zoomAdj, 1 - fit); scale = fit + zoomAdj;
+  cv.width = bufW*scale; cv.height = bufH*scale;
+  cv.style.width = (bufW*scale/dpr) + 'px'; cv.style.height = (bufH*scale/dpr) + 'px';
+}
+window.addEventListener('resize', () => { if (tab==='board') fitCanvas(); });
+
+function isoPos(vx,vy,h){ return [ox + (vx-vy)*16 - 16, oy + (vx+vy)*8 - h*HS]; }
+function topPos(vx,vy){ return [8 + vx*16, 24 + vy*16]; }
+
+// ================= tabuleiro: render =================
+function unitScreen(u, t){
+  // posição (no buffer) dos pés da unidade, com animação de movimento
+  let x = u.x, y = u.y, h = tileAt(u.x,u.y).h, attach = [u.x,u.y], hop = 0;
+  if (u.anim){
+    const a = u.anim, el = (t - a.t0)/a.step, i = clamp(Math.floor(el), 0, a.path.length-2), f = clamp(el - i, 0, 1);
+    const p0 = a.path[i], p1 = a.path[i+1];
+    const h0 = tileAt(p0[0],p0[1]).h, h1 = tileAt(p1[0],p1[1]).h;
+    x = p0[0] + (p1[0]-p0[0])*f; y = p0[1] + (p1[1]-p0[1])*f;
+    h = h0 + (h1-h0)*f; hop = Math.sin(Math.PI*f) * (h0!==h1 ? 6 : 1.5);
+    const o0 = toView(p0[0],p0[1]), o1 = toView(p1[0],p1[1]);
+    attach = (o1[0]+o1[1] >= o0[0]+o0[1]) ? p1 : p0;
+  }
+  const [vx,vy] = viewF(x,y);
+  if (viewMode==='iso'){ const [sx,sy] = isoPos(vx,vy,h); return {fx: sx+16, fy: sy+10 - hop, attach}; }
+  const [tx,ty] = topPos(vx,vy); return {fx: tx+8, fy: ty+15 - hop, attach};
+}
+function viewF(x,y){ // versão contínua de toView
+  const n = map.n;
+  switch(rot){ case 1: return [n-1-y, x]; case 2: return [n-1-x, n-1-y]; case 3: return [y, n-1-x]; default: return [x,y]; }
+}
+function drawUnit(u, p, t){
+  const c = charById(u.charId); if (!c) return;
+  const spr = makeSprite(c);
+  const fxp = Math.round(p.fx), fyp = Math.round(p.fy);
+  // base da equipe
+  bg.fillStyle = u.team==='aliado' ? 'rgba(90,180,255,.75)' : 'rgba(255,104,104,.75)';
+  bg.fillRect(fxp-3, fyp-1, 6, 1); bg.fillRect(fxp-6, fyp, 12, 1); bg.fillRect(fxp-5, fyp+1, 10, 1);
+  if (u.ko){
+    bg.save(); bg.globalAlpha = .6; bg.filter = 'grayscale(1)';
+    bg.translate(fxp, fyp-3); bg.rotate(Math.PI/2); bg.drawImage(spr, -8, -8); bg.restore();
+    return;
+  }
+  const isAct = B.on && B.act === u;
+  const bob = (Math.floor(t/420 + (u.uid.charCodeAt(0)%2)) % 2) && !u.anim ? 1 : 0;
+  const flashing = u.flash && t < u.flash && Math.floor(t/60)%2===0;
+  if (!flashing){
+    if (p.mirror){ bg.save(); bg.translate(fxp, 0); bg.scale(-1,1); bg.drawImage(spr, -8, fyp-15+bob); bg.restore(); }
+    else bg.drawImage(spr, fxp-8, fyp-15+bob);
+  }
+  if (B.on){
+    const max = c.hp || 1, w = 12, fill = Math.round(clamp(u.hp/max,0,1)*w);
+    bg.fillStyle = '#10142e'; bg.fillRect(fxp-7, fyp-19, w+2, 3);
+    bg.fillStyle = u.hp/max > .5 ? '#5be07a' : u.hp/max > .25 ? '#f2c14e' : '#ff5a5a';
+    bg.fillRect(fxp-6, fyp-18, fill, 1);
+  }
+  if (isAct && !B.over){
+    const ay = fyp - 26 + (Math.floor(t/260)%2);
+    bg.fillStyle = '#1a1226'; bg.fillRect(fxp-3, ay-1, 7, 1);
+    bg.fillStyle = '#f2c14e'; bg.fillRect(fxp-3, ay, 7, 1); bg.fillRect(fxp-2, ay+1, 5, 1); bg.fillRect(fxp-1, ay+2, 3, 1); bg.fillRect(fxp, ay+3, 1, 1);
+  }
+}
+function overlayFor(x,y){
+  const k = y*map.n + x;
+  if (B.on && B.mode==='move' && B.reach && B.reach.has(k)) return '#4aa8ff';
+  if (B.on && (B.mode==='atk'||B.mode==='mag'||B.mode==='dice') && B.tgt){
+    const heal = (B.mode==='mag' && B.spell && B.spell.tipo==='cura') || (B.mode==='dice' && B.atk && B.atk.tipo==='cura');
+    if (B.tgt.valid.has(k)) return heal ? '#5be07a' : '#ff4a4a';
+    if (B.tgt.set.has(k)) return heal ? '#2e7a46' : '#a03a3a';
+  }
+  return null;
+}
+function render(t){
+  bg.clearRect(0,0,bufW,bufH);
+  bg.imageSmoothingEnabled = false;
+  const n = map.n, units = liveUnits();
+  const byTile = new Map();
+  for (const u of units){ const p = unitScreen(u, t); const k = p.attach[1]*n + p.attach[0]; if (!byTile.has(k)) byTile.set(k, []); byTile.get(k).push([u,p]); }
+  const pulse = .38 + .22*Math.sin(t/180);
+  if (viewMode==='iso'){
+    for (let s=0; s<=2*(n-1); s++){
+      for (let vx=Math.max(0,s-(n-1)); vx<=Math.min(n-1,s); vx++){
+        const vy = s - vx, [x,y] = fromView(vx,vy), T = tileAt(x,y);
+        const [sx,sy] = isoPos(vx,vy,T.h);
+        let v = T.v; if (T.t==='agua') v = (T.v + Math.floor(t/600)) % 4;
+        bg.drawImage(tileImg(T.t, v, T.h), sx, sy);
+        const oc = overlayFor(x,y);
+        if (oc){ bg.globalAlpha = pulse; bg.drawImage(diamondOverlay(oc), sx, sy); bg.globalAlpha = 1; }
+        if (hover && hover[0]===x && hover[1]===y){
+          bg.fillStyle = (Math.floor(t/250)%2) ? '#ffffff' : '#f2c14e';
+          for (let r=0;r<16;r++){ const hw=spanHW(r); bg.fillRect(sx+16-hw, sy+r, 1, 1); bg.fillRect(sx+16+hw-1, sy+r, 1, 1); }
+        }
+        const list = byTile.get(y*n+x); if (list) for (const [u,p] of list) drawUnit(u, p, t);
+      }
+    }
+  } else {
+    for (let vy=0; vy<n; vy++) for (let vx=0; vx<n; vx++){
+      const [x,y] = fromView(vx,vy), T = tileAt(x,y), [tx,ty] = topPos(vx,vy);
+      let v = T.v; if (T.t==='agua') v = (T.v + Math.floor(t/600)) % 4;
+      bg.drawImage(sqTex(T.t, v), tx, ty);
+      const lum = (T.h - 2) * .07;
+      bg.fillStyle = lum > 0 ? `rgba(255,255,230,${lum})` : `rgba(0,0,20,${-lum})`; bg.fillRect(tx,ty,16,16);
+      // penhasco visível ao sul
+      if (vy < n-1){ const [sx2,sy2] = fromView(vx,vy+1); const d = T.h - tileAt(sx2,sy2).h; if (d>0){ bg.fillStyle = TER[T.t].side[1]; bg.fillRect(tx, ty+16-Math.min(2+d,6), 16, Math.min(2+d,6)); bg.fillStyle='rgba(0,0,0,.35)'; bg.fillRect(tx, ty+15, 16, 1);} }
+      const oc = overlayFor(x,y);
+      if (oc){ bg.globalAlpha = pulse; bg.fillStyle = oc; bg.fillRect(tx+1,ty+1,14,14); bg.globalAlpha = 1; }
+      if (hover && hover[0]===x && hover[1]===y){ bg.strokeStyle = (Math.floor(t/250)%2) ? '#fff' : '#f2c14e'; bg.lineWidth=1; bg.strokeRect(tx+.5,ty+.5,15,15); }
+    }
+    const sorted = [...byTile.values()].flat().sort((a,b) => a[1].fy - b[1].fy);
+    for (const [u,p] of sorted) drawUnit(u, p, t);
+  }
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.drawImage(buf, 0, 0, cv.width, cv.height);
+  // números de dano em alta resolução
+  const fs = Math.max(10, Math.round(4*scale));
+  ctx.font = `${fs}px 'Press Start 2P', monospace`; ctx.textAlign = 'center';
+  for (let i=fx.length-1; i>=0; i--){
+    const e = fx[i], el = t - e.t0; if (el > 1000){ fx.splice(i,1); continue; }
+    const p = unitScreen(e.u, t), yy = (p.fy - 22 - Math.min(el,300)/300*6) * scale, xx = p.fx*scale;
+    ctx.globalAlpha = el > 700 ? 1-(el-700)/300 : 1;
+    ctx.lineWidth = Math.max(3, scale); ctx.strokeStyle = '#120a1a'; ctx.strokeText(e.text, xx, yy);
+    ctx.fillStyle = e.color; ctx.fillText(e.text, xx, yy); ctx.globalAlpha = 1;
+  }
+}
+
+// ================= tabuleiro: interação =================
+function pickTile(e){
+  const r = cv.getBoundingClientRect();
+  const bx = (e.clientX - r.left) / r.width * bufW, by = (e.clientY - r.top) / r.height * bufH;
+  const n = map.n;
+  if (viewMode==='top'){
+    const vx = Math.floor((bx-8)/16), vy = Math.floor((by-24)/16);
+    if (vx<0||vy<0||vx>=n||vy>=n) return null; return fromView(vx,vy);
+  }
+  for (let s=2*(n-1); s>=0; s--){
+    for (let vx=Math.min(n-1,s); vx>=Math.max(0,s-(n-1)); vx--){
+      const vy = s-vx, [x,y] = fromView(vx,vy), [sx,sy] = isoPos(vx,vy,tileAt(x,y).h);
+      const px = Math.floor(bx - sx), py = Math.floor(by - sy);
+      if (py<0||py>15||px<0||px>31) continue;
+      const hw = spanHW(py); if (px >= 16-hw && px <= 16+hw-1) return [x,y];
+    }
+  }
+  return null;
+}
+cv.addEventListener('pointermove', e => {
+  const p = pickTile(e); hover = p; updateStatus();
+  if (painting && p && mode==='edit') applyTool(p[0], p[1], true);
+  if (B.on && (B.mode==='atk'||B.mode==='mag'||B.mode==='dice')) renderPreview();
+});
+cv.addEventListener('pointerleave', () => { hover = null; updateStatus(); });
+cv.addEventListener('pointerdown', e => {
+  const p = pickTile(e); if (!p) return;
+  if (mode==='edit'){ painting = tool.kind==='terrain'; if (painting) cv.setPointerCapture(e.pointerId); applyTool(p[0], p[1], false); }
+  else battleClick(p[0], p[1]);
+});
+window.addEventListener('pointerup', () => { if (painting){ painting = false; save(); } });
+
+let statusMsg = null, statusUntil = 0;
+function flashStatus(m){ statusMsg = m; statusUntil = now() + 3500; updateStatus(); }
+function updateStatus(){
+  const el = $('#status');
+  if (statusMsg && now() < statusUntil){ el.textContent = statusMsg; return; }
+  if (!hover){ el.textContent = mode==='edit' ? toolHint() : 'Passe o mouse sobre o mapa.'; return; }
+  const [x,y] = hover, T = tileAt(x,y), u = unitAt(x,y);
+  let s = `(${x+1}, ${y+1}) · ${TER[T.t].nome} · altura ${T.h}`;
+  if (u){ const c = charById(u.charId); s += ` — ${c.name} (${CLASSES[c.cls].nome}, ${u.team==='aliado'?'aliado':'inimigo'})` + (B.on ? ` PV ${u.hp}/${c.hp} PM ${u.mp}/${c.mp}` : ''); }
+  el.textContent = s;
+}
+function toolHint(){
+  if (tool.kind==='terrain') return `Pintando ${TER[tool.t].nome}: clique e arraste no mapa.`;
+  if (tool.kind==='up') return 'Clique numa casa para elevar.';
+  if (tool.kind==='down') return 'Clique numa casa para rebaixar.';
+  if (tool.kind==='erase') return 'Clique numa unidade para tirá-la do mapa.';
+  if (tool.kind==='place'){ const c = charById(tool.charId); return c ? `Clique numa casa para posicionar ${c.name}.` : ''; }
+  return '';
+}
+function applyTool(x, y, dragging){
+  const T = tileAt(x,y);
+  if (tool.kind==='terrain'){
+    if (T.t===tool.t) return;
+    T.t = tool.t; T.v = hash3(x,y,TT.indexOf(tool.t))%4;
+    if (TER[T.t].bloq) placements = placements.filter(p => !(p.x===x && p.y===y));
+  } else if (dragging) return;
+  else if (tool.kind==='up') T.h = Math.min(MAXH-1, T.h+1);
+  else if (tool.kind==='down') T.h = Math.max(0, T.h-1);
+  else if (tool.kind==='erase') placements = placements.filter(p => !(p.x===x && p.y===y));
+  else if (tool.kind==='place'){
+    if (TER[T.t].bloq){ flashStatus('Não dá para posicionar na água.'); return; }
+    placements = placements.filter(p => !(p.x===x && p.y===y) && p.charId!==tool.charId);
+    placements.push({id:uid(), charId:tool.charId, x, y});
+    // avança para o próximo personagem fora do mapa
+    const next = chars.find(c => !placements.some(p => p.charId===c.id));
+    if (next) tool = {kind:'place', charId:next.id};
+    renderEditPanel();
+  }
+  if (!dragging) save();
+}
+
+// ---------- painel de edição ----------
+function renderEditPanel(){
+  const pal = $('#terrPal'); pal.innerHTML = '';
+  for (const k of TT){
+    const b = document.createElement('button'); b.className = tool.kind==='terrain' && tool.t===k ? 'on' : '';
+    const c = document.createElement('canvas'); c.width=32; c.height=16; c.getContext('2d').drawImage(topTex(k,0),0,0);
+    const s = document.createElement('span'); s.textContent = TER[k].nome;
+    b.append(c, s); b.onclick = () => { tool = {kind:'terrain', t:k}; renderEditPanel(); updateStatus(); };
+    pal.appendChild(b);
+  }
+  $$('[data-tool]').forEach(b => b.classList.toggle('on', tool.kind===b.dataset.tool));
+  const list = $('#placeList'); list.innerHTML = '';
+  for (const c of chars){
+    const on = placements.some(p => p.charId===c.id);
+    const b = document.createElement('button'); b.className = 'card' + (tool.kind==='place' && tool.charId===c.id ? ' sel' : '');
+    const t = document.createElement('canvas'); drawThumb(t, c, 2);
+    const d = document.createElement('div');
+    d.innerHTML = `<div class="nm">${esc(c.name)} <span class="chip ${c.team}">${c.team==='aliado'?'aliado':'inimigo'}</span></div><div class="cl">${CLASSES[c.cls].nome} · ${on ? 'no mapa' : 'fora do mapa'}</div>`;
+    b.append(t, d); b.onclick = () => { tool = {kind:'place', charId:c.id}; renderEditPanel(); updateStatus(); };
+    list.appendChild(b);
+  }
+  if (!chars.length) list.innerHTML = '<div class="muted">Crie fichas na aba Fichas.</div>';
+  $('#mapSize').value = String(map.n);
+}
+$$('[data-tool]').forEach(b => b.onclick = () => { tool = {kind:b.dataset.tool}; renderEditPanel(); updateStatus(); });
+$('#clearUnits').onclick = () => { placements = []; save(); renderEditPanel(); };
+$('#genMap').onclick = () => {
+  const n = parseInt($('#mapSize').value,10);
+  map = genMap(n, Math.floor(Math.random()*1e9));
+  placements = placements.filter(p => p.x<n && p.y<n && !TER[tileAt(p.x,p.y).t].bloq);
+  save(); fitCanvas(); renderEditPanel();
+};
+$('#flatMap').onclick = () => {
+  const n = parseInt($('#mapSize').value,10);
+  map = {n, tiles: Array.from({length:n*n}, (_,i) => ({t:'grama', h:1, v: hash3(i,3,9)%4}))};
+  placements = placements.filter(p => p.x<n && p.y<n);
+  save(); fitCanvas(); renderEditPanel();
+};
+$$('#viewSeg button').forEach(b => b.onclick = () => { viewMode = b.dataset.view; $$('#viewSeg button').forEach(x => x.classList.toggle('on', x===b)); fitCanvas(); });
+$('#rotL').onclick = () => { rot = (rot+3)%4; };
+$('#rotR').onclick = () => { rot = (rot+1)%4; };
+$('#zoomIn').onclick = () => { zoomAdj++; fitCanvas(); };
+$('#zoomOut').onclick = () => { zoomAdj--; fitCanvas(); };
+
+$$('#modeSeg button').forEach(b => b.onclick = () => setMode(b.dataset.mode));
+function setMode(m){
+  if (m==='edit' && !isGM()) m = 'battle';
+  mode = m;
+  $$('#modeSeg button').forEach(x => x.classList.toggle('on', x.dataset.mode===m));
+  $('#p-edit').hidden = m!=='edit'; $('#p-battle').hidden = m!=='battle';
+  if (m==='edit' && B.on) stopBattle();
+  if (m==='edit') renderEditPanel(); else renderBattlePanel();
+  updateStatus();
+}
+
+// ================= batalha =================
+const isAI = u => B.ai && u && u.team==='inimigo';
+function logMsg(html){ B.log.unshift(html); if (B.log.length>60) B.log.pop(); renderLog(); }
+const nameTag = u => { const c = charById(u.charId); return `<span class="${u.team==='aliado'?'a':'i'}">${esc(c ? c.name : '?')}</span>`; };
+function showBanner(text, ms=1100){ const b = $('#banner'); b.textContent = text; b.classList.add('show'); clearTimeout(showBanner.t); showBanner.t = setTimeout(()=>b.classList.remove('show'), ms); }
+
+function startBattle(){
+  const units = liveUnits().map(u => ({...u}));
+  if (!units.some(u=>u.team==='aliado') || !units.some(u=>u.team==='inimigo')){
+    logMsg('Posicione pelo menos um aliado e um inimigo no modo Editar mapa.'); return;
+  }
+  Object.assign(B, {on:true, units, round:1, ti:-1, act:null, mode:null, over:false, busy:false, log:[], inspect:null, atk:null});
+  B.ai = $('#aiToggle').checked;
+  buildOrder();
+  logMsg('<b>A batalha começou!</b>');
+  showBanner('BATALHA!');
+  $('#startBattle').hidden = true; $('#stopBattle').hidden = false;
+  setTimeout(nextTurn, 700);
+  renderBattlePanel();
+}
+function stopBattle(){
+  B.on = false; B.act = null; B.mode = null; B.inspect = null; B.token++; fx.length = 0;
+  R = null; $('#rollModal').classList.remove('show');
+  $('#startBattle').hidden = false; $('#stopBattle').hidden = true;
+  renderBattlePanel();
+}
+function buildOrder(){
+  B.order = B.units.filter(u=>!u.ko).sort((a,b) => (charById(b.charId).agi - charById(a.charId).agi) || (Math.random()-.5));
+}
+function nextTurn(){
+  if (!B.on || B.over) return;
+  B.ti++;
+  while (B.ti < B.order.length && B.order[B.ti].ko) B.ti++;
+  if (B.ti >= B.order.length){ B.round++; buildOrder(); B.ti = 0; logMsg(`— Rodada ${B.round} —`); }
+  const u = B.order[B.ti]; if (!u) return;
+  B.act = u; B.moved = false; B.acted = false; B.mode = null; B.token++;
+  const c = charById(u.charId);
+  showBanner(`Vez de ${c.name}`, 900);
+  renderBattlePanel();
+  if (isAI(u)){ const tk = B.token; setTimeout(() => { if (tk===B.token) aiTurn(); }, 800); }
+  else enterMove();
+}
+function endTurn(){
+  if (!B.on || B.busy) return;
+  B.mode = null; B.token++; nextTurn();
+}
+function scheduleEnd(ms=700){ const tk = B.token; setTimeout(() => { if (tk===B.token && !B.busy) endTurn(); }, ms); }
+
+function reachFrom(u){
+  const c = charById(u.charId), n = map.n, K = (x,y) => y*n+x;
+  const dist = new Map([[K(u.x,u.y),0]]), prev = new Map(), q = [[u.x,u.y]];
+  const all = B.units;
+  while (q.length){
+    const [x,y] = q.shift(), d = dist.get(K(x,y)); if (d >= c.mov) continue;
+    for (const [dx,dy] of DIRS){
+      const X=x+dx, Y=y+dy; if (!inb(X,Y)) continue;
+      const T = tileAt(X,Y); if (TER[T.t].bloq) continue;
+      if (Math.abs(T.h - tileAt(x,y).h) > c.jump) continue;
+      const o = all.find(w => w.x===X && w.y===Y && w!==u);
+      if (o && !o.ko && o.team!==u.team) continue;
+      const k = K(X,Y); if (dist.has(k)) continue;
+      dist.set(k, d+1); prev.set(k, K(x,y)); q.push([X,Y]);
+    }
+  }
+  const reach = new Set();
+  for (const k of dist.keys()){ const x=k%n, y=(k/n)|0; if (k===K(u.x,u.y)) continue; if (all.some(w => w!==u && w.x===x && w.y===y)) continue; reach.add(k); }
+  return {reach, prev};
+}
+function spellOf(u){ return CLASSES[charById(u.charId).cls].magia; }
+function targetsFor(u, kind){
+  const c = charById(u.charId), n = map.n, sp = spellOf(u);
+  let rmin, rmax;
+  if (kind==='atk'){ rmin = Math.max(1, c.rmin); rmax = Math.max(rmin, c.rmax); }
+  else { rmin = sp.tipo==='cura' ? 0 : 1; rmax = sp.alc; }
+  const ah = tileAt(u.x,u.y).h, set = new Set(), valid = new Set();
+  for (let y=0;y<n;y++) for (let x=0;x<n;x++){
+    const d = Math.abs(x-u.x) + Math.abs(y-u.y); if (d<rmin || d>rmax) continue;
+    if (kind==='atk' && rmax===1 && Math.abs(tileAt(x,y).h - ah) > 3) continue;
+    const k = y*n+x; set.add(k);
+    const o = B.units.find(w => w.x===x && w.y===y && !w.ko);
+    if (!o) continue;
+    const heal = kind==='mag' && sp.tipo==='cura';
+    if (heal ? o.team===u.team : o.team!==u.team) valid.add(k);
+  }
+  return {set, valid};
+}
+function targetsForAtk(u, atk){
+  const n = map.n, ah = tileAt(u.x,u.y).h, set = new Set(), valid = new Set();
+  const heal = atk.tipo === 'cura', rmin = Math.max(heal ? 0 : 1, atk.amin|0), rmax = Math.max(rmin, atk.amax|0);
+  for (let y=0;y<n;y++) for (let x=0;x<n;x++){
+    const d = Math.abs(x-u.x) + Math.abs(y-u.y); if (d<rmin || d>rmax) continue;
+    if (!heal && rmax===1 && Math.abs(tileAt(x,y).h - ah) > 3) continue;
+    const k = y*n+x; set.add(k);
+    const o = B.units.find(w => w.x===x && w.y===y && !w.ko);
+    if (o && (heal ? o.team===u.team : o.team!==u.team)) valid.add(k);
+  }
+  return {set, valid};
+}
+function dh(a,t){ return tileAt(a.x,a.y).h - tileAt(t.x,t.y).h; }
+function hitPct(a,t,kind){
+  if (kind==='mag') return 92;
+  const A = charById(a.charId), T = charById(t.charId);
+  return clamp(Math.round(82 + (A.agi - T.agi)*3 + dh(a,t)*3), 35, 98);
+}
+function estValue(a,t,kind){
+  const A = charById(a.charId), T = charById(t.charId);
+  if (kind==='atk') return Math.max(1, Math.round((A.atk - T.def*0.5) * clamp(1 + dh(a,t)*0.1, .7, 1.4)));
+  const sp = spellOf(a);
+  if (sp.tipo==='cura') return Math.round(A.mag*1.6);
+  return Math.max(1, Math.round(A.mag*1.3 - T.def*0.25));
+}
+function addFx(u, text, color){ fx.push({u, text:String(text), color, t0:now()}); }
+function perform(a, t, kind){
+  const A = charById(a.charId), T = charById(t.charId), sp = spellOf(a);
+  if (kind==='mag') a.mp -= sp.custo;
+  if (kind==='mag' && sp.tipo==='cura'){
+    const v = Math.round(estValue(a,t,kind) * (.9 + Math.random()*.2));
+    const real = Math.max(0, Math.min(v, T.hp - t.hp)); t.hp += real;
+    addFx(t, '+'+real, '#7cf07c');
+    logMsg(`${nameTag(a)} usou ${sp.nome} em ${nameTag(t)}: +${real} PV`);
+  } else {
+    const hit = hitPct(a,t,kind);
+    if (Math.random()*100 < hit){
+      const dmg = Math.max(1, Math.round(estValue(a,t,kind) * (.85 + Math.random()*.3)));
+      t.hp = Math.max(0, t.hp - dmg); t.flash = now() + 450;
+      addFx(t, dmg, kind==='mag' ? '#ffb04a' : '#ffffff');
+      logMsg(`${nameTag(a)} ${kind==='mag' ? 'lançou '+sp.nome+' em' : 'atacou'} ${nameTag(t)}: ${dmg} de dano`);
+      if (t.hp === 0){ t.ko = true; logMsg(`${nameTag(t)} foi derrotado!`); }
+    } else {
+      addFx(t, 'ERROU', '#c8c8d8'); logMsg(`${nameTag(a)} errou ${nameTag(t)}.`);
+    }
+  }
+  finishAction(a);
+}
+function finishAction(a){
+  B.acted = true; B.mode = null; B.tgt = null; B.atk = null;
+  checkVictory();
+  renderBattlePanel();
+  if (B.over) return;
+  if (B.moved || isAI(a)) scheduleEnd(800);
+}
+function checkVictory(){
+  const al = B.units.some(u => u.team==='aliado' && !u.ko), en = B.units.some(u => u.team==='inimigo' && !u.ko);
+  if (al && en) return;
+  B.over = true; B.token++;
+  const msg = al ? 'VITÓRIA!' : 'DERROTA...';
+  setTimeout(() => showBanner(msg, 4000), 500);
+  logMsg(`<b>${al ? 'Os aliados venceram!' : 'Os inimigos venceram.'}</b> Rodadas: ${B.round}`);
+}
+function moveUnit(u, destK, prev, cb){
+  const n = map.n, path = [];
+  let k = destK; while (k !== undefined){ path.unshift([k%n, (k/n)|0]); k = prev.get(k); }
+  if (path.length < 2){ cb && cb(); return; }
+  B.busy = true; B.mode = null; B.reach = null;
+  u.anim = {path, t0:now(), step:150, dest:[path[path.length-1][0], path[path.length-1][1]], cb};
+  renderBattlePanel();
+}
+function tickAnims(t){
+  for (const u of B.units){
+    if (!u.anim) continue;
+    if (t - u.anim.t0 >= u.anim.step*(u.anim.path.length-1)){
+      const a = u.anim; u.x = a.dest[0]; u.y = a.dest[1]; u.anim = null;
+      B.busy = false; B.moved = true;
+      renderBattlePanel();
+      if (a.cb) a.cb();
+    }
+  }
+}
+function enterMove(){
+  const u = B.act; if (!u || B.moved || B.busy || isAI(u)) return;
+  const r = reachFrom(u); B.reach = r.reach; B.prev = r.prev; B.mode = 'move'; renderBattlePanel();
+}
+function enterTarget(kind){
+  const u = B.act; if (!u || B.acted || B.busy) return;
+  B.spell = spellOf(u); B.tgt = targetsFor(u, kind); B.mode = kind; renderBattlePanel();
+}
+function battleClick(x, y){
+  if (!B.on || B.busy || B.over || !B.act || isAI(B.act)) return;
+  const k = y*map.n + x, u = B.act;
+  if (B.mode==='move'){
+    if (B.reach.has(k)){ moveUnit(u, k, B.prev, () => { if (B.acted) scheduleEnd(500); else if (!B.acted) { /* espera ação */ } }); return; }
+  }
+  if (B.mode==='dice' && B.tgt.valid.has(k)){
+    const t = B.units.find(w => w.x===x && w.y===y && !w.ko); openRoll(u, t, B.atk, false); return;
+  }
+  if ((B.mode==='atk'||B.mode==='mag') && B.tgt.valid.has(k)){
+    const t = B.units.find(w => w.x===x && w.y===y && !w.ko); perform(u, t, B.mode); return;
+  }
+  if (x===u.x && y===u.y && !B.moved){ enterMove(); return; }
+  const o = B.units.find(w => w.x===x && w.y===y);
+  B.inspect = o || null;
+  B.mode = null; B.reach = null; B.tgt = null; B.atk = null; renderBattlePanel();
+}
+
+// ---------- IA ----------
+function aiTurn(){
+  if (!B.on || B.over) return;
+  if (settings.combat === 'dados') return aiTurnDice();
+  const u = B.act, sp = spellOf(u), n = map.n;
+  const {reach, prev} = reachFrom(u);
+  const startK = u.y*n + u.x, cands = [startK, ...reach];
+  const foes = B.units.filter(o => !o.ko && o.team!==u.team), friends = B.units.filter(o => !o.ko && o.team===u.team);
+  const ox0 = u.x, oy0 = u.y; let best = null;
+  const minFoeDist = (x,y) => Math.min(...foes.map(f => Math.abs(f.x-x)+Math.abs(f.y-y)));
+  for (const k of cands){
+    u.x = k%n; u.y = (k/n)|0;
+    const safety = minFoeDist(u.x,u.y)*0.05;
+    const ta = targetsFor(u,'atk');
+    for (const f of foes){ if (!ta.valid.has(f.y*n+f.x)) continue;
+      const d = estValue(u,f,'atk'), s = d*hitPct(u,f,'atk')/100 + (d>=f.hp ? 30 : 0) + safety;
+      if (!best || s > best.s) best = {s, k, t:f, kind:'atk'}; }
+    if (sp && u.mp >= sp.custo){
+      const tm = targetsFor(u,'mag');
+      if (sp.tipo==='cura'){
+        for (const al of friends){ const max = charById(al.charId).hp, miss = max - al.hp;
+          if (miss < max*.4 || !tm.valid.has(al.y*n+al.x)) continue;
+          const s = Math.min(miss, estValue(u,al,'mag'))*1.3 + safety;
+          if (!best || s > best.s) best = {s, k, t:al, kind:'mag'}; }
+      } else {
+        for (const f of foes){ if (!tm.valid.has(f.y*n+f.x)) continue;
+          const d = estValue(u,f,'mag'), s = d*.92 + (d>=f.hp ? 30 : 0) + safety;
+          if (!best || s > best.s) best = {s, k, t:f, kind:'mag'}; }
+      }
+    }
+  }
+  u.x = ox0; u.y = oy0;
+  const tk = B.token;
+  if (best){
+    const act = () => setTimeout(() => { if (tk===B.token) perform(u, best.t, best.kind); }, 350);
+    if (best.k !== startK) moveUnit(u, best.k, prev, act); else act();
+  } else {
+    let bk = null, bd = Infinity;
+    for (const k of reach){ const d = minFoeDist(k%n, (k/n)|0); if (d < bd){ bd = d; bk = k; } }
+    if (bk !== null && bd < minFoeDist(u.x,u.y)) moveUnit(u, bk, prev, () => { logMsg(`${nameTag(u)} avançou.`); scheduleEnd(500); });
+    else { logMsg(`${nameTag(u)} aguardou.`); scheduleEnd(400); }
+  }
+}
+
+function aiTurnDice(){
+  const u = B.act, n = map.n, me = charById(u.charId);
+  const {reach, prev} = reachFrom(u);
+  const startK = u.y*n + u.x, cands = [startK, ...reach];
+  const foes = B.units.filter(o => !o.ko && o.team!==u.team), friends = B.units.filter(o => !o.ko && o.team===u.team);
+  const ox0 = u.x, oy0 = u.y; let best = null;
+  const minFoeDist = (x,y) => Math.min(...foes.map(f => Math.abs(f.x-x)+Math.abs(f.y-y)));
+  for (const k of cands){
+    u.x = k%n; u.y = (k/n)|0;
+    const safety = minFoeDist(u.x,u.y)*0.05;
+    for (const atk of me.attacks){
+      if ((atk.custo||0) > u.mp) continue;
+      const tg = targetsForAtk(u, atk);
+      const pool = atk.tipo==='cura' ? friends : foes;
+      for (const t of pool){
+        if (!tg.valid.has(t.y*n+t.x)) continue;
+        const T = charById(t.charId), avg = avgDice(atk);
+        let s;
+        if (atk.tipo==='cura'){ const miss = T.hp - t.hp; if (miss < T.hp*.4) continue; s = Math.min(miss, avg)*1.3; }
+        else { const need = caOf(T) - (atk.hit + clamp(dh(u,t),-3,3)); const p = settings.hitRoll ? clamp((21-need)/20, .05, .95) : 1; s = avg*p + (avg>=t.hp ? 25 : 0) - (atk.custo||0)*0.3; }
+        s += safety;
+        if (!best || s > best.s) best = {s, k, t, atk};
+      }
+    }
+  }
+  u.x = ox0; u.y = oy0;
+  const tk = B.token;
+  if (best){
+    const act = () => setTimeout(() => { if (tk===B.token) openRoll(u, best.t, best.atk, true); }, 350);
+    if (best.k !== startK) moveUnit(u, best.k, prev, act); else act();
+  } else {
+    let bk = null, bd = Infinity;
+    for (const k of reach){ const d = minFoeDist(k%n, (k/n)|0); if (d < bd){ bd = d; bk = k; } }
+    if (bk !== null && bd < minFoeDist(u.x,u.y)) moveUnit(u, bk, prev, () => { logMsg(`${nameTag(u)} avançou.`); scheduleEnd(500); });
+    else { logMsg(`${nameTag(u)} aguardou.`); scheduleEnd(400); }
+  }
+}
+
+// ---------- rolagem de combate (modo dados) ----------
+let R = null;
+function dieHTML(sides, val, cls=''){ return `<span class="die d${sides} ${cls}">${val}<small>d${sides}</small></span>`; }
+function openRoll(a, t, atk, auto){
+  const T = charById(t.charId), hb = clamp(dh(a,t), -3, 3);
+  R = {a, t, atk, auto, n:atk.n, d:atk.d, bonus:atk.bonus, hit:(atk.hit||0)+hb, hb, ca:caOf(T), phase:'ready'};
+  B.mode = null; B.tgt = null;
+  $('#rollModal').classList.add('show');
+  renderRoll();
+  if (auto){ setTimeout(() => { if (R && R.phase==='ready') doRoll(); }, 500); }
+}
+function hitOn(){ return settings.hitRoll && R.atk.tipo !== 'cura'; }
+function evalHit(){
+  if (!hitOn()){ R.hitOK = true; R.crit = false; R.fumble = false; return; }
+  R.crit = R.d20 === 20; R.fumble = R.d20 === 1;
+  R.hitTotal = R.d20 + R.hit;
+  R.hitOK = !R.fumble && (R.crit || R.hitTotal >= R.ca);
+}
+function doRoll(){
+  if (!R) return;
+  R.d20 = hitOn() ? rollDie(20) : null;
+  evalHit();
+  const cnt = R.n * (R.crit ? 2 : 1);
+  R.dice = R.hitOK ? Array.from({length:cnt}, () => rollDie(R.d)) : [];
+  R.total = R.hitOK ? Math.max(0, R.dice.reduce((s,v) => s+v, 0) + R.bonus) : 0;
+  R.final = R.total; R.manual = false;
+  R.phase = 'rolling'; renderRoll();
+  const tray = $('#rollTray'), els = tray ? [...tray.querySelectorAll('.die')] : [];
+  const iv = setInterval(() => els.forEach(e => { const sd = +e.dataset.s; e.firstChild.nodeValue = rollDie(sd); }), 60);
+  setTimeout(() => {
+    clearInterval(iv); R.phase = 'rolled'; renderRoll();
+    if (R.auto) setTimeout(() => { if (R && R.phase==='rolled') applyRoll(); }, 1500);
+  }, 750);
+}
+function rollHeader(){
+  const a = R.a, t = R.t, A = charById(a.charId), T = charById(t.charId);
+  return `<div class="vs">
+    <div><canvas id="rvA"></canvas><div><b>${esc(A.name)}</b></div><div class="muted">PM ${a.mp}/${A.mp}</div></div>
+    <div class="pix" style="font-size:10px;color:var(--gold)">${R.atk.tipo==='cura'?'CURA':'ATACA'}<br>➜</div>
+    <div><canvas id="rvT"></canvas><div><b>${esc(T.name)}</b></div><div class="muted">PV ${t.hp}/${T.hp} · CA ${caOf(T)}</div></div>
+  </div>`;
+}
+function renderRoll(){
+  if (!R) return;
+  const gm = isGM() && !R.auto, ready = R.phase==='ready', heal = R.atk.tipo==='cura';
+  const ed = gm && ready;
+  const num = (id, v, w=56) => ed ? `<input type="number" id="${id}" class="num" style="width:${w}px" value="${v}">` : `<b>${v}</b>`;
+  const dieSel = ed ? `<select id="rD" style="width:auto">${DIE_TYPES.map(d=>`<option value="${d}" ${d===R.d?'selected':''}>d${d}</option>`).join('')}</select>` : `<b>d${R.d}</b>`;
+  $('#rollTitle').textContent = `${R.atk.nome} · ${fmtDice({n:R.n,d:R.d,bonus:R.bonus})}` + (R.atk.custo ? ` · ${R.atk.custo} PM` : '');
+  let h = rollHeader();
+  if (hitOn()){
+    h += `<div class="sec"><div class="muted" style="margin-bottom:6px">TESTE DE ACERTO — precisa tirar ${R.ca} ou mais</div>
+      <div class="inline">d20 + ${num('rHit', R.hit)} ${R.hb ? `<span class="muted">(inclui ${R.hb>0?'+':''}${R.hb} de altura)</span>` : ''} &nbsp;contra CA ${num('rCA', R.ca)}</div></div>`;
+  }
+  h += `<div class="sec"><div class="muted" style="margin-bottom:6px">${heal ? 'CURA' : 'DANO'}</div>
+    <div class="inline">${num('rN', R.n, 52)} ${dieSel} + ${num('rB', R.bonus)} <span class="muted">média ${avgDice({n:R.n,d:R.d,bonus:R.bonus}).toFixed(1)}</span></div></div>`;
+  if (R.phase==='manual'){
+    h += `<div class="sec"><div class="muted" style="margin-bottom:6px">RESULTADO DOS DADOS FÍSICOS</div><div class="inline">
+      ${hitOn() ? `d20 tirou (sem somar bônus) <input type="number" id="mD20" class="num" min="1" max="20">` : ''}
+      ${heal ? 'Cura total' : 'Dano total'} <input type="number" id="mTot" class="num" min="0"></div>
+      <p class="muted" style="margin:6px 0 0">Se errar o ataque, o dano é ignorado.</p></div>
+      <div class="row"><button class="on" id="mOk">Confirmar</button><button id="mBack">Voltar</button></div>`;
+  } else if (ready){
+    h += `<div class="row"><button class="on" id="rGo" style="font-family:'Press Start 2P';font-size:11px;padding:12px 16px">🎲 ROLAR</button>
+      ${gm ? '<button id="rManual">Digitar resultado</button>' : ''}
+      ${R.auto ? '' : '<button id="rCancel">Cancelar</button>'}</div>
+      ${gm ? '<p class="muted" style="margin:8px 0 0">Como mestre, você pode mudar os dados e bônus antes de rolar, ou digitar o resultado de dados físicos.</p>' : ''}`;
+  } else {
+    // rolando ou rolado
+    let tray = '';
+    if (hitOn()) tray += dieHTML(20, R.d20, R.crit ? 'crit' : R.fumble ? 'fumble' : 'hit').replace('class="die', 'data-s="20" class="die');
+    if (R.dice && R.dice.length) tray += R.dice.map(v => dieHTML(R.d, v, heal ? 'heal' : 'dmg').replace('class="die', `data-s="${R.d}" class="die`)).join('');
+    if (R.manual) tray = (hitOn() && R.d20 ? dieHTML(20, R.d20, R.crit?'crit':R.fumble?'fumble':'hit') : '') + `<span class="pix" style="font-size:11px;margin-left:8px">dados físicos</span>`;
+    h += `<div class="tray" id="rollTray">${tray.replace(/class="die /g, R.phase==='rolling' ? 'class="die rolling ' : 'class="die ')}</div>`;
+    if (R.phase==='rolled'){
+      let verdict = '';
+      if (hitOn()) verdict = R.crit ? '<div class="verdict cr">CRÍTICO! Dados dobrados.</div>' : R.fumble ? '<div class="verdict no">FALHA CRÍTICA (1 natural)</div>' : R.hitOK ? `<div class="verdict ok">ACERTOU (${R.d20}+${R.hit} = ${R.hitTotal} ≥ ${R.ca})</div>` : `<div class="verdict no">ERROU (${R.d20}+${R.hit} = ${R.hitTotal} &lt; ${R.ca})</div>`;
+      const sumTxt = R.manual ? '' : (R.dice.length ? `${R.dice.join(' + ')}${R.bonus ? ` ${R.bonus>0?'+':'−'} ${Math.abs(R.bonus)}` : ''} = ` : '');
+      h += verdict + (R.hitOK ? `<div class="bigtotal">${sumTxt}${R.total} ${heal ? 'de cura' : 'de dano'}</div>` : '');
+      if (gm && R.hitOK) h += `<div class="gmbox inline">Ajuste do mestre — valor final: <input type="number" id="rFinal" class="num" value="${R.final}"></div>`;
+      h += `<div class="row" style="margin-top:12px">${R.auto ? '<span class="muted">Aplicando…</span>' : `<button class="on" id="rApply">Aplicar</button>${gm ? '<button id="rAgain">Rolar de novo</button><button id="rCancel">Descartar</button>' : ''}`}</div>`;
+    }
+  }
+  $('#rollBody').innerHTML = h;
+  drawThumb($('#rvA'), charById(R.a.charId), 4); drawThumb($('#rvT'), charById(R.t.charId), 4);
+  const bindNum = (id, key) => { const e = $('#'+id); if (e) e.oninput = () => { const v = parseInt(e.value,10); if (!isNaN(v)){ R[key] = key==='n' ? clamp(v,1,50) : v; refreshTitle(); } }; };
+  bindNum('rHit','hit'); bindNum('rCA','ca'); bindNum('rN','n'); bindNum('rB','bonus');
+  if ($('#rD')) $('#rD').onchange = e => { R.d = +e.target.value; refreshTitle(); };
+  if ($('#rGo')) $('#rGo').onclick = doRoll;
+  if ($('#rManual')) $('#rManual').onclick = () => { R.phase = 'manual'; renderRoll(); };
+  if ($('#mBack')) $('#mBack').onclick = () => { R.phase = 'ready'; renderRoll(); };
+  if ($('#mOk')) $('#mOk').onclick = () => {
+    const tot = parseInt($('#mTot').value, 10);
+    if (hitOn()){ const d = parseInt($('#mD20').value, 10); if (isNaN(d) || d<1 || d>20){ $('#mD20').focus(); return; } R.d20 = d; }
+    evalHit();
+    if (R.hitOK && isNaN(tot)){ $('#mTot').focus(); return; }
+    R.dice = []; R.total = R.hitOK ? Math.max(0, tot||0) : 0; R.final = R.total; R.manual = true; R.phase = 'rolled'; renderRoll();
+  };
+  if ($('#rFinal')) $('#rFinal').oninput = e => { const v = parseInt(e.target.value,10); if (!isNaN(v)) R.final = Math.max(0, v); };
+  if ($('#rApply')) $('#rApply').onclick = applyRoll;
+  if ($('#rAgain')) $('#rAgain').onclick = () => { R.phase = 'ready'; renderRoll(); };
+  if ($('#rCancel')) $('#rCancel').onclick = () => { R = null; $('#rollModal').classList.remove('show'); renderBattlePanel(); };
+}
+function refreshTitle(){ if (R) $('#rollTitle').textContent = `${R.atk.nome} · ${fmtDice({n:R.n,d:R.d,bonus:R.bonus})}` + (R.atk.custo ? ` · ${R.atk.custo} PM` : ''); }
+function applyRoll(){
+  if (!R) return;
+  const {a, t, atk} = R, T = charById(t.charId), heal = atk.tipo==='cura';
+  a.mp = Math.max(0, a.mp - (atk.custo||0));
+  const formula = R.manual ? 'dados físicos' : `${fmtDice({n:R.n,d:R.d,bonus:R.bonus})}${R.dice.length ? ': ['+R.dice.join(', ')+']' : ''}`;
+  const hitTxt = hitOn() ? ` · d20 ${R.d20}${R.crit?' CRÍTICO':R.fumble?' falha':''}` : '';
+  const head = `${nameTag(a)} usou <b>${esc(atk.nome)}</b> em ${nameTag(t)}`;
+  if (heal){
+    const real = Math.max(0, Math.min(R.final, T.hp - t.hp)); t.hp += real;
+    addFx(t, '+'+real, '#7cf07c'); logMsg(`${head}: +${real} PV <span class="muted">(${formula})</span>`);
+    pushHist(`${head}: <b>+${real} PV</b> <span class="t">(${formula})</span>`);
+  } else if (R.hitOK){
+    const dmg = R.final; t.hp = Math.max(0, t.hp - dmg); t.flash = now() + 450;
+    addFx(t, dmg, R.crit ? '#fff27a' : '#ffffff');
+    logMsg(`${head}: ${dmg} de dano <span class="muted">(${formula}${hitTxt})</span>`);
+    pushHist(`${head}: <b>${dmg} de dano</b> <span class="t">(${formula}${hitTxt})</span>`);
+    if (t.hp === 0){ t.ko = true; logMsg(`${nameTag(t)} foi derrotado!`); }
+  } else {
+    addFx(t, 'ERROU', '#c8c8d8'); logMsg(`${head} e errou <span class="muted">(${hitTxt.slice(3)} + ${R.hit} contra CA ${R.ca})</span>`);
+    pushHist(`${head}: <b>errou</b> <span class="t">(d20 ${R.d20} + ${R.hit} contra CA ${R.ca})</span>`);
+  }
+  R = null; $('#rollModal').classList.remove('show');
+  finishAction(a);
+}
+
+// ---------- painel de batalha ----------
+function renderPreview(){
+  const el = $('#preview'); if (!el) return;
+  if (!B.on || !(B.mode==='atk'||B.mode==='mag'||B.mode==='dice') || !hover){ el.textContent = B.mode && B.mode!=='move' ? 'Escolha um alvo destacado.' : ''; return; }
+  const k = hover[1]*map.n + hover[0];
+  if (!B.tgt.valid.has(k)){ el.textContent = 'Escolha um alvo destacado.'; return; }
+  const t = B.units.find(w => w.x===hover[0] && w.y===hover[1] && !w.ko), c = charById(t.charId);
+  if (B.mode==='dice'){
+    const atk = B.atk;
+    if (atk.tipo==='cura'){ el.textContent = `${c.name}: cura ${fmtDice(atk)} (média ${avgDice(atk).toFixed(1)})`; return; }
+    const hit = (atk.hit||0) + clamp(dh(B.act,t),-3,3), need = clamp(caOf(c) - hit, 2, 20);
+    el.textContent = `${c.name}: CA ${caOf(c)} · ${settings.hitRoll ? `precisa de ${need}+ no d20 · ` : ''}dano ${fmtDice(atk)}`;
+    return;
+  }
+  const v = estValue(B.act, t, B.mode);
+  el.textContent = B.mode==='mag' && B.spell.tipo==='cura'
+    ? `${c.name}: cura ~${v} PV`
+    : `${c.name}: ${hitPct(B.act,t,B.mode)}% de acerto · ~${v} de dano`;
+}
+function renderRules(){
+  const box = $('#rulesBox'), locked = B.on || !isGM();
+  box.innerHTML = `
+    <label for="ruleSel">Regras de combate</label>
+    <select id="ruleSel" ${locked?'disabled':''}>
+      <option value="dados" ${settings.combat==='dados'?'selected':''}>Dados (ataques da ficha, rolagem)</option>
+      <option value="auto" ${settings.combat==='auto'?'selected':''}>Automático (cálculo simples)</option>
+    </select>
+    ${settings.combat==='dados' ? `<label class="check" style="margin:8px 0 0"><input type="checkbox" id="hitSel" ${settings.hitRoll?'checked':''} ${!isGM()?'disabled':''}> Teste de acerto com d20 contra a CA</label>` : ''}
+    ${!isGM() ? '<div class="lockmsg">Só o mestre muda as regras.</div>' : B.on ? '<div class="muted" style="font-size:13px;margin-top:4px">Encerre a batalha para trocar de regra.</div>' : ''}`;
+  const rs = $('#ruleSel'); if (rs) rs.onchange = e => { settings.combat = e.target.value; saveSet(); renderRules(); };
+  const hs = $('#hitSel'); if (hs) hs.onchange = e => { settings.hitRoll = e.target.checked; saveSet(); };
+}
+function renderBattlePanel(){
+  renderRules();
+  const box = $('#activeBox');
+  if (!B.on){
+    box.innerHTML = settings.combat==='dados'
+      ? `<p class="muted">Cada personagem usa os ataques da própria ficha (ex.: 3d10). No ataque, abre a janela de rolagem: d20 para acertar contra a CA do alvo (10 + DEF÷2) e depois os dados de dano. O mestre pode mudar os dados antes de rolar, digitar o resultado de dados físicos e ajustar o valor final.</p>`
+      : `<p class="muted">As unidades posicionadas no modo Editar entram na batalha com PV e PM cheios. A ordem dos turnos segue a Agilidade. Atacar de cima dá bônus de dano e acerto.</p>`;
+    $('#orderBox').innerHTML = '<span class="muted">Inicie a batalha.</span>';
+    renderLog(); return;
+  }
+  const u = B.act, dice = settings.combat==='dados';
+  if (u){
+    const c = charById(u.charId), sp = spellOf(u), ai = isAI(u), lock = ai||B.busy||B.over;
+    let actions;
+    if (dice){
+      actions = `
+      <div class="actions">
+        <button id="aMove" ${B.moved||lock?'disabled':''} class="${B.mode==='move'?'on':''}">Mover</button>
+        <button id="aWait" ${lock?'disabled':''}>Encerrar turno</button>
+      </div>
+      <div class="atklist">${c.attacks.map((a,i) => `<button data-atk="${i}" ${B.acted||lock||(a.custo||0)>u.mp?'disabled':''} class="${B.mode==='dice'&&B.atk===a?'on':''}">
+        ${a.tipo==='cura'?'✚':'⚔'} <b>${esc(a.nome)}</b> ${fmtDice(a)} <small>· ${a.tipo==='cura'?'cura':'acerto +'+(a.hit||0)} · alc ${a.amin}-${a.amax}${a.custo?` · ${a.custo} PM`:''}</small></button>`).join('')}
+        ${c.attacks.length ? '' : '<span class="muted">Esta ficha não tem ataques. O mestre pode criar na aba Fichas.</span>'}
+      </div>`;
+    } else {
+      actions = `
+      <div class="actions">
+        <button id="aMove" ${B.moved||lock?'disabled':''} class="${B.mode==='move'?'on':''}">Mover</button>
+        <button id="aAtk" ${B.acted||lock?'disabled':''} class="${B.mode==='atk'?'on':''}">Atacar</button>
+        <button id="aMag" ${!sp||B.acted||lock||u.mp<(sp?sp.custo:0)?'disabled':''} class="${B.mode==='mag'?'on':''}">${sp ? `${sp.nome} (${sp.custo} PM)` : 'Sem magia'}</button>
+        <button id="aWait" ${lock?'disabled':''}>Encerrar turno</button>
+      </div>`;
+    }
+    box.innerHTML = `
+      <div class="active-card">
+        <canvas id="actThumb"></canvas>
+        <div>
+          <div><b>${esc(c.name)}</b> <span class="chip ${u.team}">${CLASSES[c.cls].nome}</span></div>
+          <div class="hpbar"><i style="width:${u.hp/c.hp*100}%"></i></div>
+          <div class="mpbar"><i style="width:${c.mp ? u.mp/c.mp*100 : 0}%"></i></div>
+          <div class="muted">PV ${u.hp}/${c.hp} · PM ${u.mp}/${c.mp} · ${dice ? `CA ${caOf(c)}` : `ATQ ${c.atk} · DEF ${c.def}`} · MOV ${c.mov}</div>
+        </div>
+      </div>
+      ${actions}
+      <div class="preview" id="preview">${ai && !B.over ? 'O computador está pensando…' : ''}</div>
+      ${gmInspector()}`;
+    drawThumb($('#actThumb'), c, 4);
+    $('#aMove').onclick = () => B.mode==='move' ? (B.mode=null, renderBattlePanel()) : enterMove();
+    $('#aWait').onclick = () => { logMsg(`${nameTag(u)} encerrou o turno.`); endTurn(); };
+    if (dice){
+      box.querySelectorAll('[data-atk]').forEach(b => b.onclick = () => {
+        const a = c.attacks[+b.dataset.atk];
+        if (B.mode==='dice' && B.atk===a){ B.mode = null; B.atk = null; B.tgt = null; }
+        else { B.atk = a; B.tgt = targetsForAtk(u, a); B.mode = 'dice'; }
+        renderBattlePanel();
+      });
+    } else {
+      $('#aAtk').onclick = () => B.mode==='atk' ? (B.mode=null, renderBattlePanel()) : enterTarget('atk');
+      $('#aMag').onclick = () => B.mode==='mag' ? (B.mode=null, renderBattlePanel()) : enterTarget('mag');
+    }
+    bindInspector();
+    renderPreview();
+  } else box.innerHTML = '';
+  const ob = $('#orderBox'); ob.innerHTML = '';
+  B.order.forEach((w,i) => {
+    const t = document.createElement('canvas'); drawThumb(t, charById(w.charId), 2);
+    t.className = w.team + (w===B.act ? ' cur' : '') + (w.ko ? ' ko' : '');
+    t.title = charById(w.charId).name; if (i >= B.ti || w===B.act) ob.appendChild(t);
+  });
+  renderLog();
+}
+function gmInspector(){
+  if (!isGM()) return '';
+  const w = B.inspect && B.units.includes(B.inspect) ? B.inspect : null;
+  if (!w) return `<div class="gmbox muted" style="font-size:14px">Mestre: clique em qualquer unidade no mapa para ajustar PV e PM.</div>`;
+  const c = charById(w.charId);
+  return `<div class="gmbox"><div style="margin-bottom:6px"><b>Mestre · ${esc(c.name)}</b></div>
+    <div class="inline">PV <input type="number" id="gHp" class="num" value="${w.hp}"> / ${c.hp}
+    &nbsp;PM <input type="number" id="gMp" class="num" value="${w.mp}"> / ${c.mp}
+    <button id="gSet">Aplicar</button></div></div>`;
+}
+function bindInspector(){
+  const b = $('#gSet'); if (!b) return;
+  b.onclick = () => {
+    const w = B.inspect, c = charById(w.charId);
+    const hp = parseInt($('#gHp').value,10), mp = parseInt($('#gMp').value,10);
+    if (!isNaN(hp)){ const before = w.hp; w.hp = clamp(hp, 0, c.hp); w.ko = w.hp === 0; if (w.hp !== before) addFx(w, (w.hp>before?'+':'')+(w.hp-before), w.hp>before ? '#7cf07c' : '#ffffff'); }
+    if (!isNaN(mp)) w.mp = clamp(mp, 0, c.mp);
+    logMsg(`<span class="muted">Mestre ajustou ${esc(c.name)}: PV ${w.hp}, PM ${w.mp}.</span>`);
+    checkVictory(); renderBattlePanel();
+  };
+}
+function renderLog(){ $('#logBox').innerHTML = B.log.length ? B.log.map(l => `<div>${l}</div>`).join('') : '<div class="muted">Nada ainda.</div>'; }
+$('#startBattle').onclick = startBattle;
+$('#stopBattle').onclick = () => { stopBattle(); logMsg('Batalha encerrada.'); };
+$('#aiToggle').onchange = e => { B.ai = e.target.checked; if (B.on && B.act && isAI(B.act) && !B.busy){ const tk=B.token; setTimeout(()=>{ if(tk===B.token) aiTurn(); },300);} renderBattlePanel(); };
+
+// ================= dados =================
+$('#dataBtn').onclick = () => { $('#dataText').value = JSON.stringify({chars, map, placements}, null, 1); $('#dataMsg').textContent=''; $('#dataModal').classList.add('show'); };
+$('#closeData').onclick = () => $('#dataModal').classList.remove('show');
+$('#dataModal').addEventListener('click', e => { if (e.target.id==='dataModal') $('#dataModal').classList.remove('show'); });
+$('#copyData').onclick = async () => { try{ await navigator.clipboard.writeText($('#dataText').value); $('#dataMsg').textContent='Copiado!'; }catch(e){ $('#dataText').select(); $('#dataMsg').textContent='Selecionado: use Ctrl+C.'; } };
+$('#importData').onclick = () => {
+  try{
+    const d = JSON.parse($('#dataText').value);
+    if (!Array.isArray(d.chars) || !d.map || !Array.isArray(d.map.tiles) || !Array.isArray(d.placements)) throw new Error();
+    for (const c of d.chars){ if (!CLASSES[c.cls]) c.cls = 'guerreiro'; if (!Array.isArray(c.attacks)) c.attacks = defaultAttacks(c.cls); c.colors = Object.assign({skin:'#f0c39a',hair:'#553322',cloth:'#888888',accent:'#cccccc'}, c.colors||{}); }
+    for (const t of d.map.tiles){ if (!TER[t.t]) t.t='grama'; t.h = clamp(t.h|0,0,MAXH-1); t.v = (t.v|0)%4; }
+    chars = d.chars; map = d.map; placements = d.placements; selId = chars[0] ? chars[0].id : null;
+    stopBattle(); save(); renderList(); renderSheet(); renderEditPanel(); fitCanvas();
+    $('#dataMsg').textContent = 'Importado!';
+  }catch(e){ $('#dataMsg').textContent = 'JSON inválido.'; }
+};
+
+// ================= perfil =================
+function renderRoleBtn(){
+  const b = $('#roleBtn'); b.textContent = isGM() ? '👑 MESTRE' : '🛡 JOGADOR'; b.classList.toggle('gm', isGM());
+  b.title = 'Trocar perfil';
+}
+function applyRole(){
+  renderRoleBtn(); renderSheet(); renderBattlePanel();
+  const eb = $('#modeSeg [data-mode=edit]'); eb.disabled = !isGM();
+  if (!isGM() && mode==='edit') setMode('battle');
+}
+$('#roleBtn').onclick = () => {
+  const m = $('#roleModal');
+  if (isGM()){
+    $('#roleBody').innerHTML = `<p>Você está como <b>mestre</b>: edita atributos e ataques, prepara o mapa, muda as regras e ajusta dados e resultados nas rolagens.</p>
+      <label for="pinIn">PIN do mestre (opcional)</label>
+      <div class="row"><input id="pinIn" type="password" inputmode="numeric" maxlength="8" value="${esc(settings.pin)}" style="width:140px"><button id="pinSave">Salvar PIN</button></div>
+      <p class="muted" style="font-size:13px">O PIN só evita trocas sem querer neste navegador; não é uma senha segura.</p>
+      <div class="row" style="margin-top:12px"><button class="on" id="toPlayer">Mudar para jogador</button><button id="roleClose">Fechar</button></div>`;
+    $('#pinSave').onclick = () => { settings.pin = $('#pinIn').value.trim(); saveSet(); $('#pinSave').textContent = 'Salvo!'; };
+    $('#toPlayer').onclick = () => { settings.role = 'jogador'; saveSet(); m.classList.remove('show'); applyRole(); };
+  } else {
+    $('#roleBody').innerHTML = `<p>Você está como <b>jogador</b>: pode mover, escolher ataques e rolar dados, mas não muda atributos, ataques nem resultados.</p>
+      ${settings.pin ? '<label for="pinTry">PIN do mestre</label><input id="pinTry" type="password" inputmode="numeric" maxlength="8" style="width:140px">' : ''}
+      <div class="lockmsg" id="pinErr"></div>
+      <div class="row" style="margin-top:12px"><button class="on" id="toGM">Entrar como mestre</button><button id="roleClose">Fechar</button></div>`;
+    $('#toGM').onclick = () => {
+      if (settings.pin && $('#pinTry').value !== settings.pin){ $('#pinErr').textContent = 'PIN incorreto.'; return; }
+      settings.role = 'mestre'; saveSet(); m.classList.remove('show'); applyRole();
+    };
+  }
+  $('#roleClose').onclick = () => m.classList.remove('show');
+  m.classList.add('show');
+};
+
+// ================= rolador livre =================
+let freeDie = 20;
+function renderDicePick(){
+  const box = $('#dicePick'); box.innerHTML = '';
+  for (const d of DIE_TYPES){
+    const b = document.createElement('button'); b.textContent = 'd'+d; b.className = d===freeDie ? 'on' : '';
+    b.onclick = () => { freeDie = d; renderDicePick(); }; box.appendChild(b);
+  }
+  updFormula();
+}
+function updFormula(){ const q = clamp(parseInt($('#rQty').value,10)||1,1,50), m = parseInt($('#rMod').value,10)||0; $('#rFormula').textContent = fmtDice({n:q,d:freeDie,bonus:m}); }
+$('#rQty').oninput = updFormula; $('#rMod').oninput = updFormula;
+$('#rollFree').onclick = () => {
+  const q = clamp(parseInt($('#rQty').value,10)||1,1,50), m = parseInt($('#rMod').value,10)||0, d = freeDie;
+  const vals = Array.from({length:q}, () => rollDie(d)), total = vals.reduce((a,b)=>a+b,0) + m;
+  const tray = $('#freeTray');
+  tray.innerHTML = vals.map(() => `<span class="die d${d} rolling ${d===20?'hit':''}">1<small>d${d}</small></span>`).join('');
+  $('#freeTotal').textContent = '…'; $('#rollFree').disabled = true;
+  const els = [...tray.querySelectorAll('.die')];
+  const iv = setInterval(() => els.forEach(e => e.firstChild.nodeValue = rollDie(d)), 60);
+  setTimeout(() => {
+    clearInterval(iv); $('#rollFree').disabled = false;
+    els.forEach((e,i) => { e.firstChild.nodeValue = vals[i]; e.classList.remove('rolling'); if (d===20 && vals[i]===20) e.classList.add('crit'); if (d===20 && vals[i]===1) e.classList.add('fumble'); });
+    $('#freeTotal').textContent = `${q>1||m ? vals.join(' + ') + (m ? ` ${m>0?'+':'−'} ${Math.abs(m)}` : '') + ' = ' : ''}${total}`;
+    const why = $('#rWhy').value.trim();
+    pushHist(`${why ? esc(why)+': ' : ''}${fmtDice({n:q,d,bonus:m})} → <b>${total}</b> <span class="t">[${vals.join(', ')}]</span>`);
+  }, 700);
+};
+function renderHist(){
+  const box = $('#histBox'); if (!box) return;
+  box.innerHTML = rollHist.length ? rollHist.map(h => `<div>${h.html}<div class="t">${new Date(h.t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div></div>`).join('') : '<div class="muted">Nenhuma rolagem ainda. As rolagens das batalhas também aparecem aqui.</div>';
+}
+$('#clearHist').onclick = () => { rollHist = []; store.set('tp_hist', rollHist); renderHist(); };
+
+// ================= loop =================
+function loop(){
+  requestAnimationFrame(loop);
+  const t = now();
+  try{
+    if (B.on) tickAnims(t);
+    if (tab==='board') render(t); else drawPortrait(t);
+    if (statusMsg && t > statusUntil){ statusMsg = null; updateStatus(); }
+  }catch(e){ console.error(e); }
+}
+renderList(); renderSheet(); renderEditPanel(); renderBattlePanel(); renderDicePick(); renderHist(); applyRole();
+if (location.hash === '#tabuleiro') showTab('board');
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
