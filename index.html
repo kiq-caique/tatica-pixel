@@ -166,11 +166,15 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges}
 .atklist button small{color:var(--dim)}
 .atklist button.on small{color:#4a3000}
 .gmbox{margin-top:10px;background:rgba(122,58,176,.25);border:1px solid #7a3ab0;border-radius:4px;padding:8px}
+.sheets-grid>*,.board-grid>*,.dice-grid>*{min-width:0}
 @media (max-width:1000px){
   .sheets-grid,.board-grid,.dice-grid{grid-template-columns:1fr}
+}
+@media (max-width:1320px){
   .atk-head{display:none}
-  .atk-row{grid-template-columns:1fr 1fr}
+  .atk-row{grid-template-columns:1fr 1fr 1fr}
   .atk-row>*:first-child{grid-column:1/-1}
+  .atk-row .dice{grid-column:span 2}
 }
 @media (max-width:640px){
   .sheet-top{grid-template-columns:1fr}
