@@ -166,9 +166,20 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges}
 .atklist button small{color:var(--dim)}
 .atklist button.on small{color:#4a3000}
 .gmbox{margin-top:10px;background:rgba(122,58,176,.25);border:1px solid #7a3ab0;border-radius:4px;padding:8px}
-.sheets-grid>*,.board-grid>*,.dice-grid>*{min-width:0}
+.sheets-grid>*,.board-grid>*,.dice-grid>*,.camp-grid>*{min-width:0}
+.camp-grid{display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start}
+.chap{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;background:rgba(0,0,0,.22);border:2px solid var(--line2);border-radius:6px;padding:10px 12px;margin-bottom:10px}
+.chap.done{border-color:#3e8a4e}
+.chap.locked{opacity:.55}
+.chap-num{font-family:'Press Start 2P';font-size:16px;color:var(--gold);text-align:center}
+.chap-title{font-weight:700;font-size:18px;margin-bottom:2px}
+.chap-foes{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.chap-foes canvas{width:32px;height:32px;background:rgba(0,0,0,.3);border-radius:3px;border-bottom:3px solid var(--foe)}
+.chip.ok{color:var(--ok)}.chip.lock{color:var(--dim)}
+.story{width:min(620px,100%)}
+.story p{font-size:17px;line-height:1.5}
 @media (max-width:1000px){
-  .sheets-grid,.board-grid,.dice-grid{grid-template-columns:1fr}
+  .sheets-grid,.board-grid,.dice-grid,.camp-grid{grid-template-columns:1fr}
 }
 @media (max-width:1320px){
   .atk-head{display:none}
@@ -190,6 +201,7 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges}
   <nav class="tabs">
     <button class="tab on" data-tab="sheets">Fichas</button>
     <button class="tab" data-tab="board">Tabuleiro</button>
+    <button class="tab" data-tab="camp">Campanha</button>
     <button class="tab" data-tab="dice">Dados</button>
     <button class="tab" id="dataBtn">Backup</button>
     <button class="role" id="roleBtn"></button>
@@ -278,6 +290,24 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges}
     </div>
   </section>
 
+  <!-- CAMPANHA -->
+  <section id="v-camp" class="view">
+    <div class="camp-grid">
+      <div class="win">
+        <h2>Campanha: A Garra Vermelha</h2>
+        <p class="muted" style="margin-top:0">Monstros organizados por uma garra vermelha estão saqueando a vila de Pedravila. Cinco batalhas curtas, do bando de goblins ao dragão da montanha.</p>
+        <div class="row between" style="margin-bottom:8px"><span class="pix" style="font-size:9px;color:var(--gold)" id="campProg"></span><button id="resetCamp">Recomeçar campanha</button></div>
+        <div id="chapList"></div>
+      </div>
+      <aside class="win">
+        <h2>Seu grupo</h2>
+        <div id="partyBox"></div>
+        <p class="muted" style="font-size:14px">Entram na campanha os personagens do lado <b>Aliado</b> (até 5), na ordem da aba Fichas. Cada capítulo vencido pela primeira vez dá +1 nível, +4 PV, +2 PM e +1 de acerto nos ataques.</p>
+        <p class="muted" style="font-size:14px">As regras (dados ou automático) e o controle dos inimigos seguem o que estiver escolhido no painel de Batalha.</p>
+      </aside>
+    </div>
+  </section>
+
   <!-- DADOS -->
   <section id="v-dice" class="view">
     <div class="dice-grid">
@@ -307,6 +337,10 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges}
 
 <div class="modal" id="rollModal" role="dialog" aria-modal="true" aria-labelledby="rollTitle">
   <div class="win roll"><h2 id="rollTitle">Rolagem</h2><div id="rollBody"></div></div>
+</div>
+
+<div class="modal" id="storyModal" role="dialog" aria-modal="true" aria-labelledby="storyTitle">
+  <div class="win story"><h2 id="storyTitle"></h2><div id="storyBody"></div><div class="row" id="storyBtns" style="margin-top:14px"></div></div>
 </div>
 
 <div class="modal" id="roleModal" role="dialog" aria-modal="true" aria-labelledby="roleTitle">
@@ -360,6 +394,13 @@ const CLASSES = {
   mago:{nome:'Mago', desc:'Frágil, mas lança Chama a até 4 casas (6 PM).', hp:26, mp:30, atk:4, def:4, mag:15, agi:6, mov:3, jump:1, rmin:1, rmax:1, cloth:'#6a3ab0', hair:'#d8d8e8', accent:'#f2c14e', magia:{nome:'Chama', tipo:'dano', custo:6, alc:4}},
   clerigo:{nome:'Clérigo', desc:'Usa Cura em aliados a até 3 casas (5 PM).', hp:30, mp:26, atk:5, def:6, mag:11, agi:6, mov:3, jump:1, rmin:1, rmax:1, cloth:'#e8e4d4', hair:'#a0602a', accent:'#f2c14e', magia:{nome:'Cura', tipo:'cura', custo:5, alc:3}},
   ladino:{nome:'Ladino', desc:'Rápido e ágil. Move longe e salta alturas maiores.', hp:30, mp:8, atk:10, def:5, mag:4, agi:12, mov:5, jump:3, rmin:1, rmax:1, cloth:'#4a4a5e', hair:'#222230', accent:'#d0d4de', magia:null},
+  goblin:{monstro:true, nome:'Goblin', desc:'Monstro pequeno e covarde. Rápido, fraco sozinho, perigoso em bando.', hp:18, mp:0, atk:8, def:4, mag:2, agi:10, mov:5, jump:2, rmin:1, rmax:1, skin:'#6aa84f', cloth:'#7a5a3a', hair:'#3a2a1a', accent:'#c9ccd6', magia:null},
+  xama:{monstro:true, nome:'Xamã goblin', desc:'Goblin feiticeiro. Lança fogo fátuo e cura os aliados.', hp:16, mp:20, atk:4, def:3, mag:10, agi:8, mov:4, jump:2, rmin:1, rmax:1, skin:'#6aa84f', cloth:'#6a3a90', hair:'#3a2a1a', accent:'#8ff3ff', magia:{nome:'Fogo fátuo', tipo:'dano', custo:5, alc:4}},
+  orc:{monstro:true, nome:'Orc', desc:'Brutamontes de machado. Muito PV e golpes pesados.', hp:40, mp:0, atk:13, def:7, mag:1, agi:5, mov:3, jump:1, rmin:1, rmax:1, skin:'#7a8a4a', cloth:'#5a4a3a', hair:'#2a2a2a', accent:'#b0b4c0', magia:null},
+  esqueleto:{monstro:true, nome:'Esqueleto', desc:'Morto-vivo incansável armado com uma espada enferrujada.', hp:22, mp:0, atk:9, def:6, mag:0, agi:6, mov:4, jump:1, rmin:1, rmax:1, skin:'#e6e0cc', cloth:'#5a5a6a', hair:'#3a3a4a', accent:'#c0c4cc', magia:null},
+  lobo:{monstro:true, nome:'Lobo', desc:'Caçador veloz. Corre longe e morde forte.', hp:20, mp:0, atk:9, def:4, mag:0, agi:11, mov:6, jump:2, rmin:1, rmax:1, skin:'#7a7a8a', cloth:'#7a7a8a', hair:'#c8c8d0', accent:'#c8c8d0', magia:null},
+  slime:{monstro:true, nome:'Slime', desc:'Gosma ácida e lenta. Difícil de levar a sério, até derreter sua armadura.', hp:24, mp:0, atk:6, def:2, mag:0, agi:4, mov:3, jump:1, rmin:1, rmax:1, skin:'#4ac0a0', cloth:'#4ac0a0', hair:'#c0fff0', accent:'#c0fff0', magia:null},
+  dragao:{monstro:true, nome:'Dragão', desc:'Chefe lendário. Garras, cauda e um sopro de fogo devastador.', hp:120, mp:30, atk:16, def:12, mag:14, agi:8, mov:4, jump:4, rmin:1, rmax:1, skin:'#b02a2a', cloth:'#b02a2a', hair:'#f0c060', accent:'#6a1a2a', magia:{nome:'Sopro de fogo', tipo:'dano', custo:8, alc:4}},
 };
 const STATS = [
   ['hp','PV','Pontos de vida',80],['mp','PM','Pontos de magia',40],
@@ -379,6 +420,13 @@ const CLASS_ATTACKS = {
   mago:[A('Cajado',1,4,0,2,1,1), A('Chama',3,6,2,4,1,4,'dano',6), A('Raio',2,10,0,3,2,5,'dano',8)],
   clerigo:[A('Maça',1,6,1,3,1,1), A('Cura',2,8,3,0,0,3,'cura',5)],
   ladino:[A('Adaga',2,4,3,6,1,1), A('Golpe furtivo',1,20,0,4,1,1,'dano',3)],
+  goblin:[A('Faca',1,6,1,4,1,1), A('Pedrada',1,4,0,3,2,3)],
+  xama:[A('Cajado',1,4,0,2,1,1), A('Fogo fátuo',2,6,1,4,1,4,'dano',5), A('Cura tribal',2,6,0,0,0,3,'cura',4)],
+  orc:[A('Machado',1,12,3,4,1,1), A('Fúria',2,10,2,1,1,1)],
+  esqueleto:[A('Espada enferrujada',1,8,2,4,1,1), A('Arco de osso',1,6,0,3,2,4)],
+  lobo:[A('Mordida',2,4,2,5,1,1)],
+  slime:[A('Ácido',1,8,0,3,1,1), A('Cuspe ácido',1,6,0,2,2,3)],
+  dragao:[A('Garras',2,8,4,7,1,1), A('Cauda',1,10,3,6,1,2), A('Sopro de fogo',4,10,0,5,1,4,'dano',8)],
 };
 const defaultAttacks = cls => (CLASS_ATTACKS[cls]||CLASS_ATTACKS.guerreiro).map(a => ({id:uid(), ...a}));
 const fmtDice = a => `${a.n}d${a.d}${a.bonus ? (a.bonus>0?'+':'')+a.bonus : ''}`;
@@ -431,24 +479,136 @@ const OVER = {
   clerigo:{0:"..............a.",1:".............aaa",2:"....occaacco..a.",3:"...occcccccco.d.",4:"...occsssscco.d.",5:"..............d.",6:"..............d.",7:"..............d.",8:"..............d.",9:"..............d.",10:"..............d.",11:"..............d.",12:"..............d.",13:"..............d.",14:"..............d."},
   ladino:{3:"...occcccccco...",6:"....oddddddo....",8:"..............w.",9:"..............w.",10:"..............a."},
 };
+// ---------- monstros: desenhos completos ----------
+const MON_TPL = {
+  goblin:[
+    "................","................","................",
+    "....oooooooo....",
+    "o..osssssssso..o",
+    "ossosyssssysosso",
+    ".oosssssssssoo..",
+    "...osskkkksso...",
+    "....okssssko..w.",
+    "...occcccccco.w.",
+    "..osccdccdccsoa.",
+    "..osccccccccsoa.",
+    "...oddddddddo...",
+    "...odddoodddo...",
+    "...okko..okko...",
+    "...ooo....ooo...",
+  ],
+  orc:[
+    "....oooooooo....",
+    "...ohhhhhhhho...",
+    "..ohhhhhhhhhho..",
+    "..osssssssssso..",
+    "..osrrssssrrso..",
+    "..osssskksssso..",
+    "..oswsssssswso..",
+    "...okkkkkkkko.aa",
+    ".oocccccccccooaa",
+    "osscccdcccccssoh",
+    "oskcccdcccccksoh",
+    ".oodddaadddoo.h.",
+    "..oddddddddo..h.",
+    "..oddo....oddoh.",
+    "..okko....okko..",
+    "..oooo....oooo..",
+  ],
+  esqueleto:[
+    "................",
+    ".....oooooo.....",
+    "....osssssso....",
+    "...osssssssso...",
+    "...osoossooso...",
+    "...osrossroso...",
+    "....ossoosso....",
+    ".....osososo....",
+    "....oossssoo..a.",
+    "...os.osso.so.a.",
+    "...os.osso.so.a.",
+    "...o..osso..oaaa",
+    ".....osssso...d.",
+    ".....os..so.....",
+    ".....os..so.....",
+    "....oss..sso....",
+  ],
+  lobo:[
+    "................","................","................","................",
+    "..o..o..........",
+    ".ocooco.........",
+    ".occcco.........",
+    "occycccooooo....",
+    "ocwccccccccccoo.",
+    "ooodccccccccccco",
+    "...occhhhhhcccco",
+    "....occhhhhcco..",
+    "....oco....oco..",
+    "....oco....oco..",
+    "....odo....odo..",
+    "....ooo....ooo..",
+  ],
+  slime:[
+    "................","................","................","................",
+    "................","................","................","................",
+    "......oooo......",
+    "....ooccccoo....",
+    "...ochcccccco...",
+    "..occcecceccco..",
+    ".occcccccccccco.",
+    ".occccccccccdco.",
+    ".oddddddddddddo.",
+    "..oooooooooooo..",
+  ],
+  dragao:[
+    "............o...........",
+    "...........oao..........",
+    "..ow......oaaao.........",
+    ".ocwo....oaaaaao........",
+    ".occco..oaaaaaaao.......",
+    "occycco.oaaaaaaaao......",
+    "occcccco.oaaaaaaaao.....",
+    "owwcccccooaaaaaaaaao....",
+    ".oooocccccoaaaaaaaaao...",
+    ".....occcccooooooooooo..",
+    "....occhhccccccccccccco.",
+    "...occhhhcccccccccccccoo",
+    "...ochhhhcccccccccccdddo",
+    "...ochhhhcccccccdddooo..",
+    "....ohhhccccccccdo......",
+    "....occccoooccccco......",
+    "....occco...occco.......",
+    "....oddo....oddo........",
+    "...owwwo...owwwo........",
+    "...oooo....oooo.........",
+  ],
+};
+// xamã = goblin com capuz e cajado
+const XAMA_OVER = {2:".....oooooo...g.",3:"....occcccco..gg",4:"o..occsssscco.h.",5:"..............h.",6:"..............h.",7:"..............h.",8:"..............h.",9:"..............h.",10:"..............h.",11:"..............h.",12:"..............h.",13:"..............h.",14:"..............h."};
+function spriteGrid(cls){
+  let base = BASE, over = OVER[cls] || {};
+  if (cls === 'xama'){ base = MON_TPL.goblin; over = XAMA_OVER; }
+  else if (MON_TPL[cls]){ base = MON_TPL[cls]; over = {}; }
+  const W = Math.max(...base.map(r => r.length));
+  const grid = base.map(r => r.padEnd(W,'.').slice(0,W).split(''));
+  for (const [ri,row] of Object.entries(over)){
+    for (let x=0; x<W; x++){ const k=row[x]; if (k==='.'||k===undefined) continue; grid[ri][x] = k==='_' ? '.' : k; }
+  }
+  return grid;
+}
 const spriteCache = new Map();
 function makeSprite(ch){
   const c = ch.colors;
   const key = [ch.cls,c.skin,c.hair,c.cloth,c.accent].join('|');
   if (spriteCache.has(key)) return spriteCache.get(key);
-  const grid = BASE.map(r => r.split(''));
-  const ov = OVER[ch.cls] || {};
-  for (const [ri,row] of Object.entries(ov)){
-    for (let x=0; x<16; x++){ const k=row[x]; if (k==='.'||k===undefined) continue; grid[ri][x] = k==='_' ? '.' : k; }
-  }
-  const pal = {o:'#1a1226', e:'#1a1226', s:c.skin, h:c.hair, c:c.cloth, d:shade(c.cloth,-.4), a:c.accent, w:'#f6f2e6', g:'#8ff3ff'};
-  const cv = document.createElement('canvas'); cv.width=16; cv.height=16;
+  const grid = spriteGrid(ch.cls), H = grid.length, W = grid[0].length;
+  const pal = {o:'#1a1226', e:'#1a1226', s:c.skin, k:shade(c.skin,-.3), h:c.hair, c:c.cloth, d:shade(c.cloth,-.4), a:c.accent, w:'#f6f2e6', g:'#8ff3ff', y:'#ffe14a', r:'#ff3a3a'};
+  const cv = document.createElement('canvas'); cv.width=W; cv.height=H;
   const g = cv.getContext('2d');
-  for (let y=0;y<16;y++) for (let x=0;x<16;x++){
-    const k = grid[y][x]; if (k==='.') continue;
+  for (let y=0;y<H;y++) for (let x=0;x<W;x++){
+    const k = grid[y][x]; if (k==='.' || !pal[k]) continue;
     let col = pal[k];
-    // brilho de 1px no topo do cabelo e da roupa
-    if ((k==='h'||k==='c') && y>0 && grid[y-1][x]==='o') col = shade(col,.22);
+    if ((k==='h'||k==='c'||k==='s') && y>0 && grid[y-1][x]==='o') col = shade(col,.22);
     g.fillStyle = col; g.fillRect(x,y,1,1);
   }
   spriteCache.set(key, cv);
@@ -457,7 +617,9 @@ function makeSprite(ch){
 function drawThumb(cv, ch, scale){
   const g = cv.getContext('2d'); cv.width = 16*scale; cv.height = 16*scale;
   g.imageSmoothingEnabled = false; g.clearRect(0,0,cv.width,cv.height);
-  g.drawImage(makeSprite(ch), 0, 0, cv.width, cv.height);
+  const spr = makeSprite(ch), f = Math.min(cv.width/spr.width, cv.height/spr.height);
+  const w = spr.width*f, h = spr.height*f;
+  g.drawImage(spr, (cv.width-w)/2, cv.height-h, w, h);
 }
 
 // ================= texturas de terreno =================
@@ -529,7 +691,7 @@ function diamondOverlay(color){
 function mkChar(name, cls, team, o={}){
   const C = CLASSES[cls];
   const ch = {id:uid(), name, cls, team, level:o.level||1, notes:o.notes||'',
-    colors:{skin:o.skin||'#f0c39a', hair:o.hair||C.hair, cloth:o.cloth||C.cloth, accent:o.accent||C.accent}};
+    colors:{skin:o.skin||C.skin||'#f0c39a', hair:o.hair||C.hair, cloth:o.cloth||C.cloth, accent:o.accent||C.accent}};
   for (const k of STAT_KEYS) ch[k] = C[k];
   ch.attacks = defaultAttacks(cls);
   return ch;
@@ -589,8 +751,9 @@ let chars = store.get('tp_chars', null), map = store.get('tp_map', null), placem
 if (!Array.isArray(chars) || !map || !Array.isArray(placements)) seedAll();
 for (const c of chars) if (!Array.isArray(c.attacks)) c.attacks = defaultAttacks(c.cls);
 let selId = chars[0] ? chars[0].id : null;
-function save(){ store.set('tp_chars', chars); store.set('tp_map', map); store.set('tp_place', placements); }
-const charById = id => chars.find(c => c.id === id);
+function save(){ store.set('tp_chars', chars); store.set('tp_map', campStash ? campStash.map : map); store.set('tp_place', campStash ? campStash.placements : placements); }
+let campChars = [], campStash = null;
+const charById = id => chars.find(c => c.id === id) || campChars.find(c => c.id === id);
 
 // ================= abas =================
 let tab = 'sheets';
@@ -601,8 +764,10 @@ function showTab(t){
   $('#v-sheets').classList.toggle('active', t==='sheets');
   $('#v-board').classList.toggle('active', t==='board');
   $('#v-dice').classList.toggle('active', t==='dice');
+  $('#v-camp').classList.toggle('active', t==='camp');
   if (t==='board'){ renderEditPanel(); fitCanvas(); }
   else if (t==='sheets') renderList();
+  else if (t==='camp') renderCampaign();
   else renderHist();
 }
 
@@ -636,7 +801,7 @@ function renderSheet(){
         <h2>Ficha de personagem</h2>
         <div class="fields">
           <div class="full"><label for="f-name">Nome</label><input id="f-name" data-f="name" value="${esc(c.name)}" maxlength="24"></div>
-          <div><label for="f-cls">Classe</label><select id="f-cls" data-f="cls" ${lk}>${Object.entries(CLASSES).map(([k,v])=>`<option value="${k}" ${k===c.cls?'selected':''}>${v.nome}</option>`).join('')}</select></div>
+          <div><label for="f-cls">Classe</label><select id="f-cls" data-f="cls" ${lk}>${[['Heróis',false],['Monstros',true]].map(([g,m])=>`<optgroup label="${g}">${Object.entries(CLASSES).filter(([k,v])=>!!v.monstro===m).map(([k,v])=>`<option value="${k}" ${k===c.cls?'selected':''}>${v.nome}</option>`).join('')}</optgroup>`).join('')}</select></div>
           <div><label for="f-team">Lado</label><select id="f-team" data-f="team" ${lk}><option value="aliado" ${c.team==='aliado'?'selected':''}>Aliado</option><option value="inimigo" ${c.team==='inimigo'?'selected':''}>Inimigo</option></select></div>
           <div><label for="f-level">Nível</label><input id="f-level" type="number" min="1" max="99" data-f="level" data-num value="${c.level}" ${lk}></div>
           <div><label>Defesa nos dados</label><div style="padding:6px 0">CA <b>${caOf(c)}</b> <span class="muted">(10 + DEF÷2)</span></div></div>
@@ -693,6 +858,8 @@ function renderSheet(){
         if (untouched) for (const k of STAT_KEYS) c[k] = CLASSES[v][k];
         if (clothDefault) c.colors.cloth = CLASSES[v].cloth;
         if (c.colors.accent === old.accent) c.colors.accent = CLASSES[v].accent;
+        if (c.colors.hair === old.hair) c.colors.hair = CLASSES[v].hair;
+        if (c.colors.skin === (old.skin||'#f0c39a') || CLASSES[v].monstro || old.monstro) c.colors.skin = CLASSES[v].skin || '#f0c39a';
         if (atkDefault) c.attacks = defaultAttacks(v);
         save(); renderSheet(); renderList(); return;
       }
@@ -738,7 +905,8 @@ function drawPortrait(t){
   g.drawImage(tileImg('grama',1,1), 20, 200-S*(16+HS+5)-12, 32*S, (16+HS+5)*S);
   const bob = Math.floor(t/420)%2;
   g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(100-6*S/1.2, 200-S*(16+HS+5)-12+8*S-S, 10*S, 2*S);
-  g.drawImage(makeSprite(c), 100-8*S, 200-S*(16+HS+5)-12+8*S-15*S-bob*S+S, 16*S, 16*S);
+  const spr = makeSprite(c), SS = spr.width > 16 ? 4 : S;
+  g.drawImage(spr, 100-spr.width*SS/2, 200-S*(16+HS+5)-12+8*S - spr.height*SS - bob*S + 2*S, spr.width*SS, spr.height*SS);
 }
 
 // ================= tabuleiro: estado =================
@@ -813,24 +981,24 @@ function drawUnit(u, p, t){
   bg.fillRect(fxp-3, fyp-1, 6, 1); bg.fillRect(fxp-6, fyp, 12, 1); bg.fillRect(fxp-5, fyp+1, 10, 1);
   if (u.ko){
     bg.save(); bg.globalAlpha = .6; bg.filter = 'grayscale(1)';
-    bg.translate(fxp, fyp-3); bg.rotate(Math.PI/2); bg.drawImage(spr, -8, -8); bg.restore();
+    bg.translate(fxp, fyp-3); bg.rotate(Math.PI/2); bg.drawImage(spr, -spr.width/2, -spr.height/2); bg.restore();
     return;
   }
   const isAct = B.on && B.act === u;
   const bob = (Math.floor(t/420 + (u.uid.charCodeAt(0)%2)) % 2) && !u.anim ? 1 : 0;
   const flashing = u.flash && t < u.flash && Math.floor(t/60)%2===0;
   if (!flashing){
-    if (p.mirror){ bg.save(); bg.translate(fxp, 0); bg.scale(-1,1); bg.drawImage(spr, -8, fyp-15+bob); bg.restore(); }
-    else bg.drawImage(spr, fxp-8, fyp-15+bob);
+    bg.drawImage(spr, fxp - (spr.width>>1), fyp - spr.height + 1 + bob);
   }
   if (B.on){
     const max = c.hp || 1, w = 12, fill = Math.round(clamp(u.hp/max,0,1)*w);
-    bg.fillStyle = '#10142e'; bg.fillRect(fxp-7, fyp-19, w+2, 3);
+    const top = fyp - spr.height - 3;
+    bg.fillStyle = '#10142e'; bg.fillRect(fxp-7, top, w+2, 3);
     bg.fillStyle = u.hp/max > .5 ? '#5be07a' : u.hp/max > .25 ? '#f2c14e' : '#ff5a5a';
-    bg.fillRect(fxp-6, fyp-18, fill, 1);
+    bg.fillRect(fxp-6, top+1, fill, 1);
   }
   if (isAct && !B.over){
-    const ay = fyp - 26 + (Math.floor(t/260)%2);
+    const ay = fyp - spr.height - 10 + (Math.floor(t/260)%2);
     bg.fillStyle = '#1a1226'; bg.fillRect(fxp-3, ay-1, 7, 1);
     bg.fillStyle = '#f2c14e'; bg.fillRect(fxp-3, ay, 7, 1); bg.fillRect(fxp-2, ay+1, 5, 1); bg.fillRect(fxp-1, ay+2, 3, 1); bg.fillRect(fxp, ay+3, 1, 1);
   }
@@ -1042,7 +1210,7 @@ function startBattle(){
   B.ai = $('#aiToggle').checked;
   buildOrder();
   logMsg('<b>A batalha começou!</b>');
-  showBanner('BATALHA!');
+  showBanner(B.campaign != null ? `Cap. ${B.campaign+1}: ${CAMPAIGN[B.campaign].titulo}` : 'BATALHA!', 1600);
   $('#startBattle').hidden = true; $('#stopBattle').hidden = false;
   setTimeout(nextTurn, 700);
   renderBattlePanel();
@@ -1051,6 +1219,7 @@ function stopBattle(){
   B.on = false; B.act = null; B.mode = null; B.inspect = null; B.token++; fx.length = 0;
   R = null; $('#rollModal').classList.remove('show');
   $('#startBattle').hidden = false; $('#stopBattle').hidden = true;
+  if (campStash) campExit();
   renderBattlePanel();
 }
 function buildOrder(){
@@ -1175,6 +1344,7 @@ function checkVictory(){
   const msg = al ? 'VITÓRIA!' : 'DERROTA...';
   setTimeout(() => showBanner(msg, 4000), 500);
   logMsg(`<b>${al ? 'Os aliados venceram!' : 'Os inimigos venceram.'}</b> Rodadas: ${B.round}`);
+  if (B.campaign != null) setTimeout(() => { if (B.over && B.campaign != null) campaignResult(al); }, 2200);
 }
 function moveUnit(u, destK, prev, cb){
   const n = map.n, path = [];
@@ -1576,6 +1746,156 @@ $('#importData').onclick = () => {
     stopBattle(); save(); renderList(); renderSheet(); renderEditPanel(); fitCanvas();
     $('#dataMsg').textContent = 'Importado!';
   }catch(e){ $('#dataMsg').textContent = 'JSON inválido.'; }
+};
+
+// ================= campanha =================
+const CAMPAIGN = [
+  {id:'c1', titulo:'Emboscada na Estrada', tema:'campo', n:10, seed:1101,
+   teaser:'Goblins atacam a carroça de remédios de Pedravila.',
+   intro:['A vila de Pedravila contratou o grupo para escoltar uma carroça de remédios até a capital. Uma viagem tranquila, prometeram.','Na curva do rio, risadinhas agudas saem dos arbustos. Pedras voam. Goblins! E o mais magrelo deles já está com a mão no saco de moedas.'],
+   outro:['Os goblins fogem para o mato, deixando para trás um mapa rabiscado.','No canto do papel, desenhada com tinta vermelha, há uma garra de três dedos. Alguém está organizando os monstros da região.'],
+   inimigos:[{cls:'goblin', nome:'Ziknak, o Ladrão', boost:{hp:8, atk:2, hit:1}, cores:{cloth:'#8a2a2a'}}, {cls:'goblin', qtd:3}]},
+  {id:'c2', titulo:'Uivos na Floresta', tema:'floresta', n:12, seed:2207,
+   teaser:'Uma matilha de lobos guiada por um xamã goblin.',
+   intro:['O mapa leva à Mata Cinzenta. A noite cai cedo entre as árvores, e os uivos chegam de todos os lados.','No alto de uma pedra, um xamã goblin sopra um apito de osso. A cada nota, os olhos dos lobos brilham mais.'],
+   outro:['O apito se parte ao meio. Gravada nele, de novo, a garra vermelha.','Antes de desmaiar, o xamã resmunga: "O chefe Gorbag vai esmagar vocês..."'],
+   inimigos:[{cls:'xama', nome:'Grizzle, o Domador', boost:{hp:6}}, {cls:'lobo', qtd:3}]},
+  {id:'c3', titulo:'O Acampamento Orc', tema:'acampamento', n:12, seed:3313,
+   teaser:'Invadir o acampamento do chefe Gorbag.',
+   intro:['Fumaça, tambores e cheiro de carne queimada: o acampamento de Gorbag fica numa clareira cercada de estacas.','O chefe orc é enorme, com a garra vermelha pintada no peito. Ele ri quando vê o grupo chegar.'],
+   outro:['Gorbag cai de joelhos e larga o machado.','"Eu só cobrava o tributo", ele confessa. "O ouro vai para o Senhor da Montanha. Ninguém passa da cripta antiga e volta vivo."'],
+   inimigos:[{cls:'orc', nome:'Gorbag, o Chefe', boost:{hp:20, atk:3, hit:2}, cores:{cloth:'#7a1a1a', accent:'#d8a040'}}, {cls:'orc', qtd:1}, {cls:'goblin', qtd:2}]},
+  {id:'c4', titulo:'A Cripta Esquecida', tema:'cripta', n:12, seed:4421,
+   teaser:'Mortos-vivos e gosma ácida no caminho da montanha.',
+   intro:['O único caminho até a montanha atravessa uma cripta de pedra, mais velha que a própria vila.','Os ossos no chão começam a se mexer. Do teto, pinga uma gosma verde que corrói o que toca.'],
+   outro:['No fundo da cripta, uma inscrição gasta: "Aqui repousa a fúria de Ignarath, até que lhe neguem o ouro."','Um tremor sacode as paredes. Lá em cima, na montanha, algo enorme acaba de acordar.'],
+   inimigos:[{cls:'esqueleto', qtd:3}, {cls:'slime', qtd:2}]},
+  {id:'c5', titulo:'O Covil do Dragão', tema:'montanha', n:14, seed:5531,
+   teaser:'Ignarath, o dragão de escamas rubras.',
+   intro:['O pico está coberto de neve, mas a pedra sob os pés é quente.','Ignarath abre as asas, tapando o sol. A garra vermelha era a dele o tempo todo. "Mais ladrões?", ele ruge. "Vou derreter vocês junto com o resto."'],
+   outro:['Com um último rugido, Ignarath despenca na neve. O tesouro roubado de Pedravila brilha no fundo do covil.','A vila faz uma festa de três dias em honra do grupo. FIM — ou o começo de algo maior: o mestre pode criar novas aventuras no editor.'],
+   inimigos:[{cls:'dragao', nome:'Ignarath'}, {cls:'goblin', qtd:2, cores:{cloth:'#6a1a1a'}}]},
+];
+let camp = Object.assign({done:[]}, store.get('tp_camp', {}));
+const saveCamp = () => store.set('tp_camp', camp);
+function applyTheme(m, tema, seed){
+  const rnd = mulberry32(seed + 99);
+  for (const T of m.tiles){
+    if (tema==='floresta'){ if (T.t==='areia') T.t='terra'; else if (T.t==='neve' || (T.t==='pedra' && rnd()<.6)) T.t='grama'; else if (T.t==='grama' && rnd()<.15) T.t='terra'; }
+    else if (tema==='acampamento'){ if (T.t==='grama' && rnd()<.4) T.t='terra'; if (T.t==='neve') T.t='pedra'; }
+    else if (tema==='cripta'){ if (T.t!=='agua') T.t = rnd()<.18 ? 'terra' : 'pedra'; }
+    else if (tema==='montanha'){ T.h = Math.min(MAXH-1, T.h+1); if (T.t==='agua' || T.h>=4) T.t='neve'; else if (T.h===3) T.t = rnd()<.6 ? 'pedra' : 'neve'; else if (T.t==='areia') T.t='pedra'; }
+    T.v = Math.floor(rnd()*4);
+  }
+}
+function spawnSpots(m, cx, cy, count, taken){
+  const n = m.n, seen = new Set([cy*n+cx]), q = [[cx,cy]], out = [];
+  while (q.length && out.length < count){
+    const [x,y] = q.shift(), k = y*n+x, T = m.tiles[k];
+    if (!TER[T.t].bloq && !taken.has(k)){ out.push([x,y]); taken.add(k); }
+    for (const [dx,dy] of DIRS){ const X=x+dx, Y=y+dy; if (X<0||Y<0||X>=n||Y>=n) continue; const kk=Y*n+X; if (!seen.has(kk)){ seen.add(kk); q.push([X,Y]); } }
+  }
+  return out;
+}
+function chapterEnemies(C){
+  const list = [];
+  for (const e of C.inimigos){
+    const qtd = e.qtd || 1;
+    for (let k=0; k<qtd; k++){
+      const nome = e.nome || (qtd > 1 ? `${CLASSES[e.cls].nome} ${k+1}` : CLASSES[e.cls].nome);
+      const ch = mkChar(nome, e.cls, 'inimigo', e.cores || {});
+      ch.id = 'm_' + ch.id;
+      if (e.boost){ ch.hp += e.boost.hp||0; ch.atk += e.boost.atk||0; ch.attacks.forEach(a => { a.hit += e.boost.hit||0; a.bonus += e.boost.atk ? 1 : 0; }); }
+      list.push(ch);
+    }
+  }
+  return list;
+}
+function campaignParty(){ return chars.filter(c => c.team==='aliado').slice(0,5); }
+function unlocked(i){ return i===0 || camp.done.includes(CAMPAIGN[i-1].id); }
+function renderCampaign(){
+  const box = $('#chapList'); box.innerHTML = '';
+  CAMPAIGN.forEach((C,i) => {
+    const done = camp.done.includes(C.id), open = unlocked(i);
+    const el = document.createElement('div'); el.className = 'chap' + (open ? '' : ' locked') + (done ? ' done' : '');
+    el.innerHTML = `<div class="chap-num">${i+1}</div>
+      <div class="chap-body"><div class="chap-title">${C.titulo} ${done ? '<span class="chip ok">concluído</span>' : open ? '' : '<span class="chip lock">bloqueado</span>'}</div>
+        <div class="muted">${C.teaser}</div><div class="chap-foes"></div></div>
+      <div><button ${open ? '' : 'disabled'} class="${open && !done ? 'on' : ''}">${done ? 'Jogar de novo' : 'Jogar'}</button></div>`;
+    const foes = el.querySelector('.chap-foes');
+    for (const ch of chapterEnemies(C)){ const t = document.createElement('canvas'); drawThumb(t, ch, 2); t.title = ch.name; foes.appendChild(t); }
+    el.querySelector('button').onclick = () => openStory(i);
+    box.appendChild(el);
+  });
+  const pb = $('#partyBox'); pb.innerHTML = '';
+  const party = campaignParty();
+  if (!party.length) pb.innerHTML = '<p class="lockmsg">Nenhum personagem do lado Aliado. Crie heróis na aba Fichas.</p>';
+  for (const c of party){
+    const row = document.createElement('div'); row.className = 'card';
+    const t = document.createElement('canvas'); drawThumb(t, c, 3);
+    const d = document.createElement('div'); d.innerHTML = `<div class="nm">${esc(c.name)}</div><div class="cl">${CLASSES[c.cls].nome} · Nv ${c.level} · PV ${c.hp}</div>`;
+    row.append(t, d); pb.appendChild(row);
+  }
+  $('#campProg').textContent = `${camp.done.length} de ${CAMPAIGN.length} capítulos concluídos`;
+}
+function storyModal(title, html, buttons){
+  $('#storyTitle').textContent = title; $('#storyBody').innerHTML = html;
+  const bb = $('#storyBtns'); bb.innerHTML = '';
+  for (const [label, fn, cls] of buttons){ const b = document.createElement('button'); b.textContent = label; if (cls) b.className = cls; b.onclick = () => { $('#storyModal').classList.remove('show'); fn && fn(); }; bb.appendChild(b); }
+  $('#storyModal').classList.add('show');
+}
+function openStory(i){
+  const C = CAMPAIGN[i], party = campaignParty();
+  const foes = chapterEnemies(C).map(c => esc(c.name)).join(', ');
+  storyModal(`Capítulo ${i+1} · ${C.titulo}`,
+    C.intro.map(p => `<p>${p}</p>`).join('') + `<p class="muted"><b>Inimigos:</b> ${foes}<br><b>Seu grupo:</b> ${party.length ? party.map(c=>esc(c.name)).join(', ') : 'ninguém!'}<br><b>Objetivo:</b> derrotar todos os inimigos.</p>`,
+    party.length ? [['Começar batalha', () => startChapter(i), 'on'], ['Voltar']] : [['Voltar']]);
+}
+function startChapter(i){
+  const C = CAMPAIGN[i], party = campaignParty(); if (!party.length) return;
+  if (B.on) stopBattle();
+  campStash = {map, placements};
+  const m = genMap(C.n, C.seed); applyTheme(m, C.tema, C.seed);
+  map = m; campChars = chapterEnemies(C);
+  const taken = new Set();
+  const al = spawnSpots(m, 0, m.n-1, party.length, taken), en = spawnSpots(m, m.n-1, 0, campChars.length, taken);
+  placements = [
+    ...party.map((c,k) => ({id:uid(), charId:c.id, x:al[k][0], y:al[k][1]})),
+    ...campChars.map((c,k) => ({id:uid(), charId:c.id, x:en[k][0], y:en[k][1]})),
+  ];
+  B.campaign = i;
+  showTab('board'); setMode('battle'); fitCanvas();
+  startBattle();
+}
+function campExit(){
+  if (!campStash) return;
+  map = campStash.map; placements = campStash.placements; campStash = null; campChars = []; B.campaign = null;
+  fitCanvas(); renderEditPanel();
+}
+function campaignResult(win){
+  const i = B.campaign, C = CAMPAIGN[i]; if (C == null) return;
+  if (win){
+    let reward = '';
+    if (!camp.done.includes(C.id)){
+      camp.done.push(C.id); saveCamp();
+      const ids = new Set(B.units.filter(u => u.team==='aliado').map(u => u.charId));
+      const ups = [];
+      for (const c of chars) if (ids.has(c.id)){ c.level++; c.hp += 4; c.mp += 2; c.attacks.forEach(a => a.hit = (a.hit||0) + 1); ups.push(`${esc(c.name)} → Nv ${c.level}`); }
+      save(); renderList();
+      reward = `<div class="gmbox"><b>Recompensa:</b> +1 nível, +4 PV, +2 PM e +1 de acerto em todos os ataques.<br>${ups.join(' · ')}</div>`;
+    }
+    const next = i+1 < CAMPAIGN.length;
+    storyModal(next ? `Vitória! · ${C.titulo}` : 'Campanha concluída!', C.outro.map(p => `<p>${p}</p>`).join('') + reward,
+      [...(next ? [['Próximo capítulo', () => { stopBattle(); openStory(i+1); }, 'on']] : []), ['Voltar à campanha', () => { stopBattle(); showTab('camp'); }, next ? '' : 'on']]);
+  } else {
+    storyModal(`Derrota · ${C.titulo}`, '<p>O grupo recua, ferido. Mas heróis sempre tentam de novo.</p><p class="muted">Dica: use o terreno alto, deixe o clérigo perto da linha de frente e foque um inimigo por vez.</p>',
+      [['Tentar de novo', () => { stopBattle(); startChapter(i); }, 'on'], ['Voltar à campanha', () => { stopBattle(); showTab('camp'); }]]);
+  }
+}
+$('#resetCamp').onclick = function(){
+  if (this.dataset.armed){ camp = {done:[]}; saveCamp(); renderCampaign(); this.textContent = 'Recomeçar campanha'; delete this.dataset.armed; return; }
+  this.dataset.armed = '1'; this.textContent = 'Confirmar? (os níveis ganhos continuam)';
+  setTimeout(() => { delete this.dataset.armed; this.textContent = 'Recomeçar campanha'; }, 3500);
 };
 
 // ================= perfil =================
